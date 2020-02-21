@@ -37,7 +37,8 @@ proper RBAC on the Cosmos resources to manage and modify the authentication in t
 
 ## Running the sample
 
-Set the start up project, ensure you have your service principal credentials in appSettings.json, 
+Set the start up project, ensure you have your service principal credentials in appSettings.json. 
+To learn more see, [Authentication in Azure Management Libraries for .NET](https://github.com/Azure/azure-libraries-for-net/blob/master/AUTH.md)
 
 ## Key concepts
 
