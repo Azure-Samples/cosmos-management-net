@@ -4,50 +4,44 @@ languages:
 - csharp
 products:
 - dotnet
-description: "Add 150 character max description"
-urlFragment: "update-this-to-unique-url-stub"
+description: "Azure Management Libraries for Azure Cosmos DB"
+urlFragment: "cosmos-management-net"
 ---
 
-# Official Microsoft Sample
+# Azure Management Libraries for .NET for Azure Cosmos DB
 
-<!-- 
-Guidelines on README format: https://review.docs.microsoft.com/help/onboard/admin/samples/concepts/readme-template?branch=master
+The Azure Management Libraries for .NET for Azure Cosmos DB is a object-oriented API for managing Azure Cosmos DB resources via it's Resource Provider.
+There are two projects and two versions of this API. A project of samples built on our auto-generated libraries built against the Swagger spec on the REST API
+for the Cosmos DB Resource Provider, and another fluent-style API that is built upon the auto-generated libary. 
 
-Guidance on onboarding samples to docs.microsoft.com/samples: https://review.docs.microsoft.com/help/onboard/admin/samples/process/onboarding?branch=master
-
-Taxonomies for products and languages: https://review.docs.microsoft.com/new-hope/information-architecture/metadata/taxonomies?branch=master
--->
-
-Give a short description for your sample here. What does it do and why is it important?
+Please note that the fluent interfaces are not fully complete and both the generated and fluent libraries are themselves Preview releases.
 
 ## Contents
 
 Outline the file contents of the repository. It helps users navigate the codebase, build configuration and any related assets.
 
-| File/folder       | Description                                |
-|-------------------|--------------------------------------------|
-| `src`             | Sample source code.                        |
-| `.gitignore`      | Define what to ignore at commit time.      |
-| `CHANGELOG.md`    | List of changes to the sample.             |
-| `CONTRIBUTING.md` | Guidelines for contributing to the sample. |
-| `README.md`       | This README file.                          |
-| `LICENSE`         | The license for the sample.                |
+| File/folder                  | Description                                |
+|------------------------------|--------------------------------------------|
+| `cosmos-management-fluent`   | Cosmos DB fluent management samples.       |
+| `cosmos-management-generated`| Cosmos DB generated management samples.    |
+
 
 ## Prerequisites
 
-Outline the required components and tools that a user might need to have on their machine in order to run the sample. This can be anything from frameworks, SDKs, OS versions or IDE releases.
+None
 
 ## Setup
 
-Explain how to prepare the sample once the user clones or downloads the repository. The section should outline every step necessary to install dependencies and set up any settings (for example, API keys and output folders).
+To get started you will need to generate a service principal in Azure. Add the required information needed in appSettings.json or authenticate using MSI with the 
+proper RBAC on the Cosmos resources to manage and modify the authentication in the samples.
 
 ## Running the sample
 
-Outline step-by-step instructions to execute the sample and see its output. Include steps for executing the sample from the IDE, starting specific services in the Azure portal or anything related to the overall launch of the code.
+Set the start up project, ensure you have your service principal credentials in appSettings.json, 
 
 ## Key concepts
 
-Provide users with more context on the tools and services used in the sample. Explain some of the code that is being used and how services interact with each other.
+These samples demonstrate how to manage Cosmos DB resources through it's Control Plane (Resource Provider). You cannot do any database CRUD operations using these samples
 
 ## Contributing
 
