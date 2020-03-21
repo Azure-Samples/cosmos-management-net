@@ -10,7 +10,11 @@ namespace cosmos_management_fluent
     class Table
     {
 
-        public async Task<ITable> CreateTableAsync(IAzure azure, string resourceGroupName, string accountName, string tableName)
+        public async Task<ITable> CreateTableAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string tableName)
         {
             await azure.CosmosDBAccounts.Define(accountName)
                 .WithRegion(Region.USWest2)
@@ -26,15 +30,38 @@ namespace cosmos_management_fluent
             return await azure.CosmosDBAccounts.GetById(accountName).GetTableAsync(tableName);
         }
 
-        public async Task<ThroughputSettingsGetPropertiesResource> GetTableThroughputSettingsAsync(IAzure azure, string resourceGroupName, string accountName, string tableName)
+        public async Task<ThroughputSettingsGetPropertiesResource> GetTableThroughputSettingsAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string tableName)
         {
-            return await azure.CosmosDBAccounts
+            ThroughputSettingsGetPropertiesResource throughput = await azure.CosmosDBAccounts
                 .GetByResourceGroup(resourceGroupName, accountName)
                 .GetTable(tableName)
                 .GetThroughputSettingsAsync();
+
+            Console.WriteLine($"Current throughput: {throughput.Throughput}");
+            Console.WriteLine($"Minimum throughput: {throughput.MinimumThroughput}");
+            Console.WriteLine($"Throughput update pending: {throughput.OfferReplacePending}");
+
+            AutopilotSettingsResource autopilot = throughput.AutopilotSettings;
+            if (autopilot != null)
+            {
+                Console.WriteLine("Autopilot enabled: True");
+                Console.WriteLine($"Max throughput: {autopilot.MaxThroughput}");
+                Console.WriteLine($"Increment percentage: {autopilot.AutoUpgradePolicy.ThroughputPolicy.IncrementPercent}");
+            }
+
+            return throughput;
         }
 
-        public async Task<int> UpdateTableThroughputAsync(IAzure azure, string resourceGroupName, string accountName, string tableName, int throughput)
+        public async Task<int> UpdateTableThroughputAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string tableName, 
+            int throughput)
         {
             var throughputSettings = await GetTableThroughputSettingsAsync(azure, resourceGroupName, accountName, tableName);
 

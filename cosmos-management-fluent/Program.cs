@@ -13,7 +13,7 @@ namespace cosmos_management_fluent
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Azure Cosmos DB Fluent Management API Sample");
+            Console.WriteLine("Azure Cosmos DB Fluent Management API Samples");
 
             await Run();
         }
@@ -89,11 +89,10 @@ namespace cosmos_management_fluent
             await databaseAccount.ListDatabaseAccountsAsync(azure, resourceGroupName);
             await databaseAccount.GetAccountAsync(azure, resourceGroupName, accountName);
             await databaseAccount.ListKeysAsync(azure, resourceGroupName, accountName);
-            await databaseAccount.AddRegionAsync(azure, resourceGroupName, accountName);
-            await databaseAccount.ChangeFailoverPriorityAsync(azure, resourceGroupName, accountName);
-            await databaseAccount.GetAccountAsync(azure, resourceGroupName, accountName);
-            await databaseAccount.InitiateFailoverAsync(azure, resourceGroupName, accountName);
-            await databaseAccount.RemoveRegionAsync(azure, resourceGroupName, accountName);
+            await databaseAccount.AddRegionAsync(azure, resourceGroupName, accountName); //Add South Central US
+            await databaseAccount.ChangeFailoverPriorityAsync(azure, resourceGroupName, accountName); //Swap East US 2 and South Central US
+            await databaseAccount.InitiateFailoverAsync(azure, resourceGroupName, accountName); //Make East US 2 write region
+            await databaseAccount.RemoveRegionAsync(azure, resourceGroupName, accountName); //Remove South Central US region
             INetwork virtualNetwork = await databaseAccount.CreateVirtualNetworkAsync(azure, resourceGroupName, accountName);
             await databaseAccount.UpdateAccountAddVirtualNetworkAsync(azure, resourceGroupName, accountName, virtualNetwork);
         }
@@ -110,7 +109,7 @@ namespace cosmos_management_fluent
 
             await sql.CreateContainerAllAsync(azure, resourceGroupName, accountName, databaseName1, containerName);
             await sql.GetContainerAsync(azure, resourceGroupName, accountName, databaseName1, containerName);
-            await sql.CreateDatabaseAsync(azure, resourceGroupName, accountName, databaseName2);
+            await sql.AddDatabaseToAccountAsync(azure, resourceGroupName, accountName, databaseName2);
             await sql.AddContainerToDatabaseAsync(azure, resourceGroupName, accountName, databaseName2, containerName, 400);
             await sql.UpdateContainerThroughputAsync(azure, resourceGroupName, accountName, databaseName1, containerName, 500);
             await sql.UpdateContainerAsync(azure, resourceGroupName, accountName, databaseName1, containerName);
@@ -129,7 +128,7 @@ namespace cosmos_management_fluent
             
             await mongoDB.CreateCollectionAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
             await mongoDB.UpdateCollectionThroughputAsync(azure, resourceGroupName, accountName, databaseName, collectionName, 500);
-
+            await mongoDB.UpdateCollectionAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
         }
 
         static async Task Cassandra(IAzure azure, string resourceGroupName)

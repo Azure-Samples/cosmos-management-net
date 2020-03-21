@@ -139,6 +139,7 @@ namespace cosmos_management_generated
 
         static async Task Sql(CosmosDBManagementClient cosmosClient, string resourceGroupName)
         {
+            string location = "West US 2";
             string accountName = RandomResourceName("sql-");
             string databaseName = "database1";
             string containerName = "container1";
@@ -155,6 +156,10 @@ namespace cosmos_management_generated
             string storedProcedureBody = File.ReadAllText($@".\js\{storedProcedureName}.js");
             string triggerBody = File.ReadAllText($@".\js\{triggerName}.js");
             string userDefinedFunctionBody = File.ReadAllText($@".\js\{userDefinedFunctionName}.js");
+
+            //Create a new account
+            DatabaseAccount account = new DatabaseAccount();
+            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Sql);
 
             Sql sql = new Sql();
 
@@ -179,6 +184,7 @@ namespace cosmos_management_generated
 
         static async Task Gremlin(CosmosDBManagementClient cosmosClient, string resourceGroupName)
         {
+            string location = "West US 2";
             string accountName = RandomResourceName("gremlin-");
             string databaseName = "database1";
             string graphName = "graph1";
@@ -186,6 +192,10 @@ namespace cosmos_management_generated
             int throughput = 400;
             int newThroughput = 500;
             int ttl = (60 * 60 * 24); // 1 day TTL
+
+            //Create a new account
+            DatabaseAccount account = new DatabaseAccount();
+            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Gremlin);
 
             Gremlin gremlin = new Gremlin();
 
@@ -206,13 +216,17 @@ namespace cosmos_management_generated
 
         static async Task MongoDB(CosmosDBManagementClient cosmosClient, string resourceGroupName)
         {
+            string location = "West Us 2";
             string accountName = RandomResourceName("mongodb-");
             string databaseName = "database1";
             string collectionName = "collection1";
             string shardKey = "myShardKey";
             int throughput = 400;
             int newThroughput = 500;
-            
+
+            //Create a new account
+            DatabaseAccount account = new DatabaseAccount();
+            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.MongoDB);
 
             MongoDB mongoDB = new MongoDB();
 
@@ -233,6 +247,7 @@ namespace cosmos_management_generated
 
         static async Task Cassandra(CosmosDBManagementClient cosmosClient, string resourceGroupName)
         {
+            string location = "West US 2";
             string accountName = RandomResourceName("cassandra-");
             string keyspaceName = "keyspace1";
             string tableName = "table1";
@@ -240,6 +255,10 @@ namespace cosmos_management_generated
             int throughput = 400;
             int newThroughput = 500;
             int ttl = (60 * 60 * 24); // 1 day TTL
+
+            //Create a new account
+            DatabaseAccount account = new DatabaseAccount();
+            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Cassandra);
 
             Cassandra cassandra = new Cassandra();
 
@@ -260,10 +279,15 @@ namespace cosmos_management_generated
 
         static async Task Table(CosmosDBManagementClient cosmosClient, string resourceGroupName)
         {
+            string location = "West Us 2";
             string accountName = RandomResourceName("table-");
             string tableName = "table1";
             int throughput = 400;
             int newThroughput = 500;
+
+            //Create a new account
+            DatabaseAccount account = new DatabaseAccount();
+            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Table);
 
             Table table = new Table();
 
