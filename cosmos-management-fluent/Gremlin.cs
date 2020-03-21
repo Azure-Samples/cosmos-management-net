@@ -10,8 +10,12 @@ namespace cosmos_management_fluent
 {
     class Gremlin
     {
-
-		public async Task<ICosmosDBAccount> CreateGraphAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string graphName)
+		public async Task<ICosmosDBAccount> CreateGraphAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName, 
+			string databaseName, 
+			string graphName)
 		{
 			ICosmosDBAccount account = await azure.CosmosDBAccounts.Define(accountName)
 				.WithRegion(Region.USWest2)
@@ -47,16 +51,41 @@ namespace cosmos_management_fluent
 			return account;
 		}
 
-		public async Task<ThroughputSettingsGetPropertiesResource> GetGraphThroughputSettingsAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string graphName)
+		public async Task<ThroughputSettingsGetPropertiesResource> GetGraphThroughputSettingsAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName, 
+			string databaseName, 
+			string graphName)
 		{
-			return await azure.CosmosDBAccounts
+			ThroughputSettingsGetPropertiesResource throughput = await azure.CosmosDBAccounts
 				.GetByResourceGroup(resourceGroupName, accountName)
 				.GetGremlinDatabase(databaseName)
 				.GetGremlinGraph(graphName)
 				.GetThroughputSettingsAsync();
+
+			Console.WriteLine($"Current throughput: {throughput.Throughput}");
+			Console.WriteLine($"Minimum throughput: {throughput.MinimumThroughput}");
+			Console.WriteLine($"Throughput update pending: {throughput.OfferReplacePending}");
+
+			AutopilotSettingsResource autopilot = throughput.AutopilotSettings;
+			if (autopilot != null)
+			{
+				Console.WriteLine("Autopilot enabled: True");
+				Console.WriteLine($"Max throughput: {autopilot.MaxThroughput}");
+				Console.WriteLine($"Increment percentage: {autopilot.AutoUpgradePolicy.ThroughputPolicy.IncrementPercent}");
+			}
+
+			return throughput;
 		}
 
-		public async Task<int> UpdateGraphThroughputAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string graphName, int throughput)
+		public async Task<int> UpdateGraphThroughputAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName, 
+			string databaseName, 
+			string graphName, 
+			int throughput)
 		{
 			var throughputSettings = await GetGraphThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, graphName);
 
@@ -88,7 +117,12 @@ namespace cosmos_management_fluent
 			return throughput;
 		}
 
-		public async Task UpdateGraphAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string containerName)
+		public async Task UpdateGraphAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName, 
+			string databaseName, 
+			string containerName)
 		{
 
 			await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()

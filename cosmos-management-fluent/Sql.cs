@@ -11,7 +11,12 @@ namespace cosmos_management_fluent
 {
     public class Sql
     {
-        public async Task<ISqlDatabase> CreateDatabaseAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, int? throughput = null)
+        public async Task<ISqlDatabase> AddDatabaseToAccountAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            int? throughput = null)
         {
             ICosmosDBAccount account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
 
@@ -35,7 +40,13 @@ namespace cosmos_management_fluent
 
         }
 
-        public async Task<ISqlContainer> AddContainerToDatabaseAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string containerName, int throughput)
+        public async Task<ISqlContainer> AddContainerToDatabaseAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string containerName, 
+            int throughput)
         {
             ICosmosDBAccount account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
 
@@ -43,7 +54,8 @@ namespace cosmos_management_fluent
                 .UpdateSqlDatabase(databaseName)
                 .DefineNewSqlContainer(containerName)
                     .WithThroughput(throughput)
-                    .WithPartitionKey(paths: new List<string>() { "/myPartitionKey" }, kind: PartitionKind.Hash, version: null)
+                    .WithPartitionKey(PartitionKind.Hash, null )
+                    .WithPartitionKeyPath("/myPartitionKey")
                     .DefineIndexingPolicy()
                         .WithAutomatic(true)
                         .WithIndexingMode(IndexingMode.Consistent)
@@ -56,7 +68,12 @@ namespace cosmos_management_fluent
                     
         }
         
-        public async Task<ISqlContainer> CreateContainerAllAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string containerName)
+        public async Task<ISqlContainer> CreateContainerAllAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string containerName)
         {
             string storedProcedureName = "storedProcedure1";
             string triggerName = "preTriggerAll1";
@@ -77,52 +94,25 @@ namespace cosmos_management_fluent
                 .DefineNewSqlDatabase(databaseName)
                     .DefineNewSqlContainer(containerName)
                         .WithThroughput(400)
-                        .WithPartitionKey(paths: new List<string>() { "/myPartitionKey" }, kind: PartitionKind.Hash, version: null)
+                        .WithPartitionKey(PartitionKind.Hash, null)
+                        .WithPartitionKeyPath("/myPartitionKey")
                         .DefineIndexingPolicy()
                             .WithAutomatic(true)
                             .WithIndexingMode(IndexingMode.Consistent)
-                            .WithIncludedPath(new IncludedPath(path: "/*"))
-                            .WithExcludedPath(new ExcludedPath(path: "/myPathToNotIndex/*"))
-                            .WithSpatialIndex(
-                                new SpatialSpec {
-                                    Path = "/mySpatialPath/*",
-                                    Types = new List<SpatialType> { SpatialType.Point, SpatialType.LineString, SpatialType.Polygon, SpatialType.MultiPolygon }
-                                })
-                            .WithCompositeIndexes(
-                                 new List<IList<CompositePath>>
-                                    {
-                                    new List<CompositePath>
-                                    {
-                                        new CompositePath { Path = "/myOrderByPath1", Order = CompositePathSortOrder.Ascending },
-                                        new CompositePath { Path = "/myOrderByPath2", Order = CompositePathSortOrder.Descending }
-                                    },
-                                    new List<CompositePath>
-                                    {
-                                        new CompositePath { Path = "/myOrderByPath3", Order = CompositePathSortOrder.Ascending },
-                                        new CompositePath { Path = "/myOrderByPath4", Order = CompositePathSortOrder.Descending }
-                                    }
-                                })
+                            .WithIncludedPath("/*")
+                            .WithExcludedPath("/myPathToNotIndex/*")
+                            .WithSpatialIndex("/mySpatialPath/*", SpatialType.Point, SpatialType.LineString, SpatialType.Polygon, SpatialType.MultiPolygon )
+                            .WithNewCompositeIndexList()
+                                .WithCompositePath("/myOrderByPath1", CompositePathSortOrder.Ascending)
+                                .WithCompositePath("/myOrderByPath2", CompositePathSortOrder.Descending)
+                                .Attach()
                             .Attach()
-                        .WithUniqueKeyPolicy(new UniqueKeyPolicy
-                        {
-                            UniqueKeys = new List<UniqueKey>
-                            {
-                               new UniqueKey {
-                                   Paths = new List<string>
-                                   {
-                                       "/myUniqueKey1",
-                                       "/myUniqueKey2"
-                                   }
-                                }
-                            }
-                        })
-                        .WithConflictResolutionPolicy(new ConflictResolutionPolicy //only for multi-master mode
-                        {
-                            Mode = ConflictResolutionMode.LastWriterWins,
-                            ConflictResolutionPath = "/myConflictResolverPath"                            
-                        })
-                    .WithStoredProcedure(storedProcedureName, new SqlStoredProcedureResource { Id = storedProcedureName, Body = storedProcedureBody })
-                    .WithTrigger(triggerName, new SqlTriggerResource { Id = triggerName, TriggerType = triggerType, TriggerOperation = triggerOperation, Body = triggerBody })
+                        .WithUniqueKey()
+                        .WithUniqueKey("/myUniqueKey1", "/myUniqueKey2")
+                        .WithConflictResolutionPath(ConflictResolutionMode.LastWriterWins, "/myConflictResolverPath")
+                    .WithStoredProcedure(storedProcedureName, storedProcedureBody )
+                    .WithTrigger(triggerName, triggerBody, triggerType, triggerOperation)
+                    //still not fluent for 1.32
                     .WithUserDefinedFunction(userDefinedFunctionName, new SqlUserDefinedFunctionResource { Id = userDefinedFunctionName, Body = userDefinedFunctionBody })
                     .Attach()
                 .Attach()
@@ -132,7 +122,11 @@ namespace cosmos_management_fluent
 
         }
 
-        public async Task ListSqlContainersAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName)
+        public async Task ListSqlContainersAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName)
         {
             var containers = await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).GetSqlDatabase(databaseName).ListSqlContainersAsync();
             
@@ -142,7 +136,12 @@ namespace cosmos_management_fluent
             }
         }
 
-        public async Task<ISqlContainer> GetContainerAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string containerName)
+        public async Task<ISqlContainer> GetContainerAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string containerName)
         {
             ISqlContainer sqlContainer = await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).GetSqlDatabase(databaseName).GetSqlContainerAsync(containerName);
 
@@ -284,17 +283,41 @@ namespace cosmos_management_fluent
             return sqlContainer;
         }
 
-        public async Task<ThroughputSettingsGetPropertiesResource> GetContainerThroughputSettingsAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string containerName)
+        public async Task<ThroughputSettingsGetPropertiesResource> GetContainerThroughputSettingsAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string containerName)
         {
-            return await azure.CosmosDBAccounts
+            ThroughputSettingsGetPropertiesResource throughput = await azure.CosmosDBAccounts
                 .GetByResourceGroup(resourceGroupName, accountName)
                 .GetSqlDatabase(databaseName)
                 .GetSqlContainer(containerName)
                 .GetThroughputSettingsAsync();
 
+            Console.WriteLine($"Current throughput: {throughput.Throughput}");
+            Console.WriteLine($"Minimum throughput: {throughput.MinimumThroughput}");
+            Console.WriteLine($"Throughput update pending: {throughput.OfferReplacePending}");
+
+            AutopilotSettingsResource autopilot = throughput.AutopilotSettings;
+            if (autopilot != null)
+            {
+                Console.WriteLine("Autopilot enabled: True");
+                Console.WriteLine($"Max throughput: {autopilot.MaxThroughput}");
+                Console.WriteLine($"Increment percentage: {autopilot.AutoUpgradePolicy.ThroughputPolicy.IncrementPercent}");
+            }
+
+            return throughput;
         }
         
-        public async Task<int> UpdateContainerThroughputAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string containerName, int throughput)
+        public async Task<int> UpdateContainerThroughputAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string containerName, 
+            int throughput)
         {
             var throughputSettings = await GetContainerThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, containerName);
 
@@ -328,7 +351,12 @@ namespace cosmos_management_fluent
 
         }
 
-        public async Task UpdateContainerAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string containerName)
+        public async Task UpdateContainerAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string containerName)
         {
 
             await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()

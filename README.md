@@ -14,7 +14,7 @@ The Azure Management Libraries for .NET for Azure Cosmos DB is a object-oriented
 There are two projects and two versions of this API. A project of samples built on our auto-generated libraries built against the Swagger spec on the REST API
 for the Cosmos DB Resource Provider, and another fluent-style API that is built upon the auto-generated libary. 
 
-Please note that the fluent interfaces are not fully complete and both the generated and fluent libraries are themselves Preview releases.
+Please note that the fluent interfaces are not fully complete and both the generated and fluent libraries are Preview releases.
 
 ## Contents
 

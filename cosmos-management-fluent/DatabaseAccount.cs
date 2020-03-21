@@ -13,24 +13,33 @@ namespace cosmos_management_fluent
     class DatabaseAccount
     {
 
-		public async Task<ICosmosDBAccount> CreateDatabaseAccountSqlAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task<ICosmosDBAccount> CreateDatabaseAccountSqlAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 			ICosmosDBAccount account = await azure.CosmosDBAccounts.Define(accountName)
 				.WithRegion(Region.USWest2)
 				.WithExistingResourceGroup(resourceGroupName)
 				.WithDataModelSql()
 				.WithSessionConsistency()
-				.WithWriteReplication(Region.USWest2)
-				.WithReadReplication(Region.USEast2)
+				.WithWriteReplication(Region.USWest2, false)
+				.WithReadReplication(Region.USEast2, false)
 				.WithMultipleWriteLocationsEnabled(false)
 				.WithDisableKeyBaseMetadataWriteAccess(false)
-				//.WithAutomaticFailover(true)  //AutomaticFailover is not yet implemented
+				.WithVirtualNetworkFilterEnabled(false)
+				.WithIpRangeFilter("")
+				.WithVirtualNetwork("VirtualNetworkId", "SubnetName")  //Does not match our RP, do not use
+				.WithVirtualNetworkRules(new List<VirtualNetworkRule> { new VirtualNetworkRule { Id = "networkRuleResourceId", IgnoreMissingVNetServiceEndpoint = true } })
+				.WithAutomaticFailoverEnabled(true)
 				.CreateAsync();
 
 			return account;
 		}
 
-		public async Task<List<string>> ListDatabaseAccountsAsync(IAzure azure, string resourceGroupName)
+		public async Task<List<string>> ListDatabaseAccountsAsync(
+			IAzure azure, 
+			string resourceGroupName)
 		{
 			var cosmosAccounts = await azure.CosmosDBAccounts.ListByResourceGroupAsync(resourceGroupName);
 
@@ -43,7 +52,10 @@ namespace cosmos_management_fluent
 			return accountNames;
 		}
 
-		public async Task<ICosmosDBAccount> GetAccountAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task<ICosmosDBAccount> GetAccountAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 			ICosmosDBAccount account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
 
@@ -59,8 +71,9 @@ namespace cosmos_management_fluent
 			Console.WriteLine($"Default Consistency Level: {account.ConsistencyPolicy.DefaultConsistencyLevel.ToString()}");
 			Console.WriteLine($"Connection Endpoint: {account.DocumentEndpoint}");
 
-			//AutomaticFailover not yet implemented
-			//Console.WriteLine($"Enable Automatic Failover: {account.AutomaticFailover.GetValueOrDefault().ToString()}");
+			Console.WriteLine($"Automatic Failover Enabled: {account.AutomaticFailoverEnabled.ToString()}");
+			Console.WriteLine($"Key Based Metadata Write Access Disabled: {account.KeyBasedMetadataWriteAccessDisabled.ToString()}");
+			Console.WriteLine($"Customer Managed Encryption KeyVault Uri: {account.KeyVaultUri}");
 
 			bool isMultiMaster = false;
 			if (account.MultipleWriteLocationsEnabled.GetValueOrDefault())
@@ -90,13 +103,17 @@ namespace cosmos_management_fluent
 				foreach (VirtualNetworkRule virtualNetworkRule in account.VirtualNetworkRules)
 				{
 					Console.WriteLine($"Virtual Network Rule: {virtualNetworkRule.Id}");
+					Console.WriteLine($"Ignore Missing VNet Service Endpoint: {virtualNetworkRule.IgnoreMissingVNetServiceEndpoint}");
 				}
 			}
 
 			return account;
 		}
 
-		public async Task ListKeysAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task ListKeysAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 			var keys = await azure.CosmosDBAccounts.ListKeysAsync(resourceGroupName, accountName);
 
@@ -106,19 +123,25 @@ namespace cosmos_management_fluent
 			Console.WriteLine($"Secondary Readonly Key: {keys.SecondaryReadonlyMasterKey}");
 		}
 
-		public async Task AddRegionAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task AddRegionAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 
 			var account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
 
 			await account
 				.Update()
-				.WithReadReplication(Region.USSouthCentral) //Add new region
+				.WithReadReplication(region:Region.USSouthCentral, isZoneRedundant:false) //Add new region
 				.ApplyAsync();
 
 		}
 
-		public async Task RemoveRegionAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task RemoveRegionAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 			var account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
 
@@ -128,37 +151,49 @@ namespace cosmos_management_fluent
 				.ApplyAsync();
 		}
 
-		public async Task ChangeFailoverPriorityAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task ChangeFailoverPriorityAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 			//In this operation we are only swapping the last two read regions. This can be done with no downtime.
-			
-			List<Location> failoverPolicies = new List<Location>
-			{
-				new Location { LocationName = "West US 2", IsZoneRedundant = false, FailoverPriority = 0},
-				new Location { LocationName = "South Central US", IsZoneRedundant = false, FailoverPriority = 1},
-				new Location { LocationName = "East US 2", IsZoneRedundant = false, FailoverPriority = 2}
-			};
+			//Assume current regions are West US 2 = 0, East US 2 = 1, South Central US = 3
 
-			await azure.CosmosDBAccounts.FailoverPriorityChangeAsync(resourceGroupName, accountName, failoverPolicies);
+			var account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
+
+			await account.Update()
+				.WithoutAllReplications()
+				.WithWriteReplication(region: Region.USWest2)
+				.WithReadReplication(region: Region.USSouthCentral)
+				.WithReadReplication(region: Region.USEast2)
+				.ApplyAsync();
 
 		}
 
-		public async Task InitiateFailoverAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task InitiateFailoverAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
-			//Initiate a failover by updating the first region (Failover Priority = 0) to a secondary region
+			//Initiate a failover by updating the region with FailoverPriority = 0. This operation incurs downtime for write region.
+			//Assume current regions are West US 2 = 0, South Central US = 1, East US 2 = 3
 
-			List<Location> failoverPolicies = new List<Location>
-			{
-				new Location { LocationName = "East US 2", IsZoneRedundant = false, FailoverPriority = 0},
-				new Location { LocationName = "West US 2", IsZoneRedundant = false, FailoverPriority = 1},
-				new Location { LocationName = "South Central US", IsZoneRedundant = false, FailoverPriority = 2}
-			};
+			var account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
 
-			await azure.CosmosDBAccounts.FailoverPriorityChangeAsync(resourceGroupName, accountName, failoverPolicies);
+			await account.Update()
+				.WithoutAllReplications()
+				.WithWriteReplication(region: Region.USEast2)
+				.WithReadReplication(region: Region.USSouthCentral)
+				.WithReadReplication(region: Region.USWest2)
+				.ApplyAsync();
 
 		}
 			
-		public async Task UpdateAccountAddVirtualNetworkAsync(IAzure azure, string resourceGroupName, string accountName, INetwork virtualNetwork)
+		public async Task UpdateAccountAddVirtualNetworkAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName, 
+			INetwork virtualNetwork)
 		{
 			var account = await azure.CosmosDBAccounts.GetByResourceGroupAsync(resourceGroupName, accountName);
 
@@ -169,7 +204,10 @@ namespace cosmos_management_fluent
 				
 		}
 
-		public async Task<INetwork> CreateVirtualNetworkAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task<INetwork> CreateVirtualNetworkAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 			INetwork virtualNetwork = await azure.Networks.Define(accountName)
 				.WithRegion(Region.USWest2)
@@ -188,7 +226,10 @@ namespace cosmos_management_fluent
 			return virtualNetwork;
 		}
 
-		public async Task DeleteAccountAsync(IAzure azure, string resourceGroupName, string accountName)
+		public async Task DeleteAccountAsync(
+			IAzure azure, 
+			string resourceGroupName, 
+			string accountName)
 		{
 
 			await azure.CosmosDBAccounts.DeleteByResourceGroupAsync(resourceGroupName, accountName);

@@ -5,13 +5,17 @@ using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.CosmosDB.Fluent;
 using Microsoft.Azure.Management.CosmosDB.Fluent.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-using System.Collections;
 
 namespace cosmos_management_fluent
 {
     class MongoDB
     {
-        public async Task<IMongoCollection> CreateCollectionAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string collectionName)
+        public async Task<IMongoCollection> CreateCollectionAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string collectionName)
         {
             await azure.CosmosDBAccounts.Define(accountName)
                 .WithRegion(Region.USWest2)
@@ -54,7 +58,12 @@ namespace cosmos_management_fluent
             return await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).GetMongoDB(databaseName).GetCollectionAsync(collectionName);
         }
 
-        public async Task<IMongoCollection> GetCollectionAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string collectionName)
+        public async Task<IMongoCollection> GetCollectionAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string collectionName)
         {
             IMongoCollection mongoDBCollection = await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).GetMongoDB(databaseName).GetCollectionAsync(collectionName);
 
@@ -104,17 +113,41 @@ namespace cosmos_management_fluent
             return mongoDBCollection;
         }
 
-        public async Task<ThroughputSettingsGetPropertiesResource> GetCollectionThroughputSettingsAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string collectionName)
+        public async Task<ThroughputSettingsGetPropertiesResource> GetCollectionThroughputSettingsAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string collectionName)
         {
-            return await azure.CosmosDBAccounts
+            ThroughputSettingsGetPropertiesResource throughput = await azure.CosmosDBAccounts
                 .GetByResourceGroup(resourceGroupName, accountName)
                 .GetMongoDB(databaseName)
                 .GetCollection(collectionName)
                 .GetThroughputSettingsAsync();
 
+            Console.WriteLine($"Current throughput: {throughput.Throughput}");
+            Console.WriteLine($"Minimum throughput: {throughput.MinimumThroughput}");
+            Console.WriteLine($"Throughput update pending: {throughput.OfferReplacePending}");
+
+            AutopilotSettingsResource autopilot = throughput.AutopilotSettings;
+            if (autopilot != null)
+            {
+                Console.WriteLine("Autopilot enabled: True");
+                Console.WriteLine($"Max throughput: {autopilot.MaxThroughput}");
+                Console.WriteLine($"Increment percentage: {autopilot.AutoUpgradePolicy.ThroughputPolicy.IncrementPercent}");
+            }
+
+            return throughput;
         }
         
-        public async Task<int> UpdateCollectionThroughputAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string collectionName, int throughput)
+        public async Task<int> UpdateCollectionThroughputAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string collectionName, 
+            int throughput)
         {
             var throughputSettings = await GetCollectionThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
 
@@ -147,13 +180,17 @@ namespace cosmos_management_fluent
 
         }
 
-        public async Task UpdateCollectionAsync(IAzure azure, string resourceGroupName, string accountName, string databaseName, string collectionName)
+        public async Task UpdateCollectionAsync(
+            IAzure azure, 
+            string resourceGroupName, 
+            string accountName, 
+            string databaseName, 
+            string collectionName)
         {
             //await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
             //    .UpdateMongoDB(databaseName)
             //        .UpdateCollection(collectionName)
-                        
-                        
+
         }
     }
 }

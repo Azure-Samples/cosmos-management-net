@@ -38,7 +38,8 @@ namespace cosmos_management_generated
 				{ 
 					DefaultConsistencyLevel = DefaultConsistencyLevel.Session 
 				},
-				EnableAutomaticFailover = true
+				EnableAutomaticFailover = true,
+				DisableKeyBasedMetadataWriteAccess = false  //setting this to true blocks SDK clients using access keys from changing any control plane resources
 			};
 
 			SetApi(createUpdateParameters, apiType);
