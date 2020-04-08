@@ -93,6 +93,9 @@ namespace cosmos_management_generated
 
                 ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
 
+                if (throughputResource.OfferReplacePending == "true")
+                    Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
+
                 int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
 
                 //Never set below min throughput or will generate exception
@@ -249,6 +252,9 @@ namespace cosmos_management_generated
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.GetCassandraTableThroughputAsync(resourceGroupName, accountName, keyspaceName, tableName);
 
                 ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
+
+                if (throughputResource.OfferReplacePending == "true")
+                    Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
 
                 int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
 

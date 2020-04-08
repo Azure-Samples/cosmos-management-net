@@ -29,6 +29,7 @@ namespace cosmos_management_fluent
 				.WithDisableKeyBaseMetadataWriteAccess(false)
 				.WithVirtualNetworkFilterEnabled(false)
 				.WithIpRangeFilter("")
+				.WithKeyVault("")
 				.WithVirtualNetwork("VirtualNetworkId", "SubnetName")  //Does not match our RP, do not use
 				.WithVirtualNetworkRules(new List<VirtualNetworkRule> { new VirtualNetworkRule { Id = "networkRuleResourceId", IgnoreMissingVNetServiceEndpoint = true } })
 				.WithAutomaticFailoverEnabled(true)

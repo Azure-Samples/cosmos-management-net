@@ -95,6 +95,9 @@ namespace cosmos_management_generated
 
                 ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
 
+                if (throughputResource.OfferReplacePending == "true")
+                    Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
+
                 int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
 
                 //Never set below min throughput or will generate exception
@@ -157,6 +160,7 @@ namespace cosmos_management_generated
                 Console.WriteLine($"Provisioned Container Throughput: {throughput.Throughput}");
                 Console.WriteLine($"Minimum Container Throughput: {throughput.MinimumThroughput}");
                 Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
+
             }
             catch { }
 
@@ -371,6 +375,26 @@ namespace cosmos_management_generated
             return await cosmosClient.SqlResources.CreateUpdateSqlContainerAsync(resourceGroupName, accountName, databaseName, containerName, sqlContainerCreateUpdateParameters);
         }
 
+        public async Task GetContainerThroughputAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName,
+            string containerName)
+        {
+
+            
+            ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.GetSqlContainerThroughputAsync(resourceGroupName, accountName, databaseName, containerName);
+
+            ThroughputSettingsGetPropertiesResource throughput = throughputSettingsGetResults.Resource;
+
+            Console.WriteLine("\nContainer Throughput\n-----------------------");
+            Console.WriteLine($"Provisioned Container Throughput: {throughput.Throughput}");
+            Console.WriteLine($"Minimum Container Throughput: {throughput.MinimumThroughput}");
+            Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
+
+        }
+
         public async Task<int> UpdateContainerThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
@@ -385,6 +409,9 @@ namespace cosmos_management_generated
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.GetSqlContainerThroughputAsync(resourceGroupName, accountName, databaseName, containerName);
 
                 ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
+
+                if (throughputResource.OfferReplacePending == "true")
+                    Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
 
                 int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
 
