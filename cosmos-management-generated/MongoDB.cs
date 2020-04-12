@@ -9,9 +9,32 @@ namespace cosmos_management_generated
     class MongoDB
     {
 
-        public async Task<List<string>> ListDatabasesAsync(
+        public async Task<MongoDBDatabaseGetResults> CreateDatabaseAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
+            string accountName, 
+            string databaseName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
+        {
+
+            MongoDBDatabaseCreateUpdateParameters mongoDBDatabaseCreateUpdateParameters = new MongoDBDatabaseCreateUpdateParameters
+            {
+                Resource = new MongoDBDatabaseResource
+                {
+                    Id = databaseName
+                },
+                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+            };
+
+            return await cosmosClient.MongoDBResources.CreateUpdateMongoDBDatabaseAsync(resourceGroupName, accountName, databaseName, mongoDBDatabaseCreateUpdateParameters);
+        }
+
+        public async Task<List<string>> ListDatabasesAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
             string accountName)
         {
 
@@ -28,9 +51,9 @@ namespace cosmos_management_generated
         }
 
         public async Task<MongoDBDatabaseGetResults> GetDatabaseAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
             string databaseName)
         {
             MongoDBDatabaseGetResults sqlDatabase = await cosmosClient.MongoDBResources.GetMongoDBDatabaseAsync(resourceGroupName, accountName, databaseName);
@@ -38,73 +61,34 @@ namespace cosmos_management_generated
             Console.WriteLine($"Azure Resource Id: {sqlDatabase.Id}");
             Console.WriteLine($"Database Name: {sqlDatabase.Resource.Id}");
 
-            try
-            {
-                ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
-
-                ThroughputSettingsGetPropertiesResource throughput = throughputSettingsGetResults.Resource;
-
-                Console.WriteLine("\nDatabase Throughput\n-----------------------");
-                Console.WriteLine($"Provisioned Database Throughput: {throughput.Throughput}");
-                Console.WriteLine($"Minimum Database Throughput: {throughput.MinimumThroughput}");
-                Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
-
-            }
-            catch { }
+            ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
+            //Output throughput values
+            Console.WriteLine("\nDatabase Throughput\n-----------------------");
+            Throughput.Get(throughputSettingsGetResults.Resource);
 
             Console.WriteLine("\n\n-----------------------\n\n");
 
             return sqlDatabase;
         }
 
-        public async Task<MongoDBDatabaseGetResults> CreateDatabaseAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName, 
-            int throughput)
-        {
-
-            MongoDBDatabaseCreateUpdateParameters mongoDBDatabaseCreateUpdateParameters = new MongoDBDatabaseCreateUpdateParameters
-            {
-                Resource = new MongoDBDatabaseResource
-                {
-                    Id = databaseName
-                },
-                Options = new Dictionary<string, string>()
-                {
-                    { "Throughput", throughput.ToString() }
-                }
-            };
-
-            return await cosmosClient.MongoDBResources.CreateUpdateMongoDBDatabaseAsync(resourceGroupName, accountName, databaseName, mongoDBDatabaseCreateUpdateParameters);
-        }
-
         public async Task<int> UpdateDatabaseThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
-            string databaseName, 
-            int throughput)
+            string databaseName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
 
-                ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
 
-                if (throughputResource.OfferReplacePending == "true")
-                    Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
-
-                int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
-
-                //Never set below min throughput or will generate exception
-                if (minThroughput > throughput)
-                    throughput = minThroughput;
-
-                await cosmosClient.MongoDBResources.UpdateMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, new
-                    ThroughputSettingsUpdateParameters(new ThroughputSettingsResource(throughput)));
+                await cosmosClient.MongoDBResources.UpdateMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, throughputUpdate);
 
                 return throughput;
             }
@@ -117,91 +101,17 @@ namespace cosmos_management_generated
             }
         }
 
-        public async Task<List<string>> ListCollectionsAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName)
-        {
-            IEnumerable<MongoDBCollectionGetResults> mongoDBCollections = await cosmosClient.MongoDBResources.ListMongoDBCollectionsAsync(resourceGroupName, accountName, databaseName);
-
-            List<string> containerNames = new List<string>();
-
-            foreach (MongoDBCollectionGetResults mongoDBCollection in mongoDBCollections)
-            {
-                containerNames.Add(mongoDBCollection.Name);
-            }
-
-            return containerNames;
-        }
-
-        public async Task<MongoDBCollectionGetResults> GetCollectionAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName, 
-            string collectionName)
-        {
-            MongoDBCollectionGetResults mongoDBCollection = await cosmosClient.MongoDBResources.GetMongoDBCollectionAsync(resourceGroupName, accountName, databaseName, collectionName);
-
-            Console.WriteLine("\n\n-----------------------");
-            Console.WriteLine($"Azure Resource Id: {mongoDBCollection.Id}");
-
-            MongoDBCollectionGetPropertiesResource properties = mongoDBCollection.Resource;
-            Console.WriteLine($"Collection Name: {properties.Id}");
-
-            try
-            {
-                ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName);
-
-                ThroughputSettingsGetPropertiesResource throughput = throughputSettingsGetResults.Resource;
-
-                Console.WriteLine("\nCollection Throughput\n-----------------------");
-                Console.WriteLine($"Provisioned Collection Throughput: {throughput.Throughput}");
-                Console.WriteLine($"Minimum Collection Throughput: {throughput.MinimumThroughput}");
-                Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
-            }
-            catch { }
-
-            IDictionary<string, string> shardKeys = properties.ShardKey;
-            if(shardKeys.Count > 0)
-            { 
-                Console.WriteLine("\nShard Key Properties\n-----------------------");
-                foreach (var shardKey in shardKeys)
-                {
-                    Console.WriteLine($"Shard Key: {shardKey.Key}, Type: {shardKey.Value}");
-                }
-            }
-
-            Console.WriteLine("\nIndex Properties\n-----------------------");
-            foreach (MongoIndex mongoIndex in properties.Indexes)
-            {
-                MongoIndexKeys mongoIndexKeys = mongoIndex.Key;
-                MongoIndexOptions mongoIndexOptions = mongoIndex.Options;
-
-                foreach (string key in mongoIndexKeys.Keys)
-                {
-                    Console.WriteLine($"Key: {key}");
-                }
-
-                if (mongoIndexOptions.Unique.GetValueOrDefault())
-                    Console.WriteLine($"unique: {mongoIndexOptions.Unique}");
-
-                if (mongoIndexOptions.ExpireAfterSeconds.HasValue)
-                    Console.WriteLine($"expireAfterSeconds:{mongoIndexOptions.ExpireAfterSeconds}");
-            }
-
-            return mongoDBCollection;
-        }
-
         public async Task<MongoDBCollectionGetResults> CreateCollectionAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
             string databaseName, 
             string collectionName, 
-            string shardKey, 
-            int throughput)
+            string shardKey,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
         {
             MongoDBCollectionCreateUpdateParameters mongoDBCollectionCreateUpdateParameters = new MongoDBCollectionCreateUpdateParameters
             {
@@ -240,13 +150,79 @@ namespace cosmos_management_generated
                     }
                     
                 },
-                Options = new Dictionary<string, string>()
-                {
-                    { "Throughput", throughput.ToString() }
-                }
+                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
             };
 
             return await cosmosClient.MongoDBResources.CreateUpdateMongoDBCollectionAsync(resourceGroupName, accountName, databaseName, collectionName, mongoDBCollectionCreateUpdateParameters);
+        }
+
+        public async Task<List<string>> ListCollectionsAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName)
+        {
+            IEnumerable<MongoDBCollectionGetResults> mongoDBCollections = await cosmosClient.MongoDBResources.ListMongoDBCollectionsAsync(resourceGroupName, accountName, databaseName);
+
+            List<string> containerNames = new List<string>();
+
+            foreach (MongoDBCollectionGetResults mongoDBCollection in mongoDBCollections)
+            {
+                containerNames.Add(mongoDBCollection.Name);
+            }
+
+            return containerNames;
+        }
+
+        public async Task<MongoDBCollectionGetResults> GetCollectionAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName,
+            string collectionName)
+        {
+            MongoDBCollectionGetResults mongoDBCollection = await cosmosClient.MongoDBResources.GetMongoDBCollectionAsync(resourceGroupName, accountName, databaseName, collectionName);
+
+            Console.WriteLine("\n\n-----------------------");
+            Console.WriteLine($"Azure Resource Id: {mongoDBCollection.Id}");
+
+            MongoDBCollectionGetPropertiesResource properties = mongoDBCollection.Resource;
+            Console.WriteLine($"Collection Name: {properties.Id}");
+
+            ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName);
+            //Output throughput values
+            Console.WriteLine("\nCollection Throughput\n-----------------------");
+            Throughput.Get(throughputSettingsGetResults.Resource);
+
+            IDictionary<string, string> shardKeys = properties.ShardKey;
+            if (shardKeys.Count > 0)
+            {
+                Console.WriteLine("\nShard Key Properties\n-----------------------");
+                foreach (var shardKey in shardKeys)
+                {
+                    Console.WriteLine($"Shard Key: {shardKey.Key}, Type: {shardKey.Value}");
+                }
+            }
+
+            Console.WriteLine("\nIndex Properties\n-----------------------");
+            foreach (MongoIndex mongoIndex in properties.Indexes)
+            {
+                MongoIndexKeys mongoIndexKeys = mongoIndex.Key;
+                MongoIndexOptions mongoIndexOptions = mongoIndex.Options;
+
+                foreach (string key in mongoIndexKeys.Keys)
+                {
+                    Console.WriteLine($"Key: {key}");
+                }
+
+                if (mongoIndexOptions.Unique.GetValueOrDefault())
+                    Console.WriteLine($"unique: {mongoIndexOptions.Unique}");
+
+                if (mongoIndexOptions.ExpireAfterSeconds.HasValue)
+                    Console.WriteLine($"expireAfterSeconds:{mongoIndexOptions.ExpireAfterSeconds}");
+            }
+
+            return mongoDBCollection;
         }
 
         public async Task<int> UpdateCollectionThroughputAsync(
@@ -254,27 +230,20 @@ namespace cosmos_management_generated
             string resourceGroupName, 
             string accountName, 
             string databaseName, 
-            string collectionName, 
-            int throughput)
+            string collectionName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName);
 
-                ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
 
-                if (throughputResource.OfferReplacePending == "true")
-                    Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
-
-                int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
-
-                //Never set below min throughput or will generate exception
-                if (minThroughput > throughput)
-                    throughput = minThroughput;
-
-                await cosmosClient.MongoDBResources.UpdateMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName, new
-                ThroughputSettingsUpdateParameters(new ThroughputSettingsResource(throughput)));
+                await cosmosClient.MongoDBResources.UpdateMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName, throughputUpdate);
 
                 return throughput;
             }
@@ -306,8 +275,7 @@ namespace cosmos_management_generated
                     ShardKey = mongoDBCollectionGet.Resource.ShardKey,
                     Indexes = mongoDBCollectionGet.Resource.Indexes
                 },
-                Tags = mongoDBCollectionGet.Tags,
-                Options = new Dictionary<string, string>() { }
+                Tags = mongoDBCollectionGet.Tags
             };
 
             //ShardKey cannot be updated

@@ -30,8 +30,7 @@ namespace cosmos_management_fluent
 				.WithVirtualNetworkFilterEnabled(false)
 				.WithIpRangeFilter("")
 				.WithKeyVault("")
-				.WithVirtualNetwork("VirtualNetworkId", "SubnetName")  //Does not match our RP, do not use
-				.WithVirtualNetworkRules(new List<VirtualNetworkRule> { new VirtualNetworkRule { Id = "networkRuleResourceId", IgnoreMissingVNetServiceEndpoint = true } })
+				.WithVirtualNetworkRule("networkRuleResourceId", "subnetName", ignoreMissingVNetServiceEndpoint: true)
 				.WithAutomaticFailoverEnabled(true)
 				.CreateAsync();
 
@@ -200,7 +199,7 @@ namespace cosmos_management_fluent
 
 			//Update account with new virtual network and subnet
 			await account.Update()
-				.WithVirtualNetwork(virtualNetwork.Id, "subnet1")
+				.WithVirtualNetworkRule(virtualNetwork.Id, "subnet1")
 				.ApplyAsync();
 				
 		}
