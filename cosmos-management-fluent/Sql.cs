@@ -112,8 +112,7 @@ namespace cosmos_management_fluent
                         .WithConflictResolutionPath(ConflictResolutionMode.LastWriterWins, "/myConflictResolverPath")
                     .WithStoredProcedure(storedProcedureName, storedProcedureBody )
                     .WithTrigger(triggerName, triggerBody, triggerType, triggerOperation)
-                    //still not fluent for 1.32
-                    .WithUserDefinedFunction(userDefinedFunctionName, new SqlUserDefinedFunctionResource { Id = userDefinedFunctionName, Body = userDefinedFunctionBody })
+                    .WithUserDefinedFunction(userDefinedFunctionName, userDefinedFunctionBody)
                     .Attach()
                 .Attach()
             .CreateAsync();
@@ -151,12 +150,8 @@ namespace cosmos_management_fluent
 
             try
             {
-                ThroughputSettingsGetPropertiesResource throughput = await GetContainerThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, containerName);
-
                 Console.WriteLine("\nContainer Throughput\n-----------------------");
-                Console.WriteLine($"Provisioned Container Throughput: {throughput.Throughput}");
-                Console.WriteLine($"Minimum Container Throughput: {throughput.MinimumThroughput}");
-                Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
+                ThroughputSettingsGetPropertiesResource throughput = await GetContainerThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, containerName);
             }
             catch { }
 
@@ -323,29 +318,24 @@ namespace cosmos_management_fluent
 
 
             if (throughputSettings.OfferReplacePending == "true")
+                Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
+
+            int minThroughput = Convert.ToInt32(throughputSettings.MinimumThroughput);
+
+            //Check if passed throughput is less than minimum allowable
+            if(throughput < minThroughput)
             {
-                Console.WriteLine($"Cannot update throughput while a throughput update is in progress");
-                throughput = 0;
+                Console.WriteLine($"Throughput value passed: {throughput} is below Minimum allowable throughput {minThroughput}. Setting to minimum throughput.");
+                throughput = minThroughput;
             }
-            else
-            { 
-                int minThroughput = Convert.ToInt32(throughputSettings.MinimumThroughput);
 
-                //Check if passed throughput is less than minimum allowable
-                if(throughput < minThroughput)
-                {
-                    Console.WriteLine($"Throughput value passed: {throughput} is below Minimum allowable throughput {minThroughput}. Setting to minimum throughput.");
-                    throughput = minThroughput;
-                }
-
-                await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
-                .UpdateSqlDatabase(databaseName)
-                    .UpdateSqlContainer(containerName)
-                        .WithThroughput(throughput)
-                        .Parent()
+            await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
+            .UpdateSqlDatabase(databaseName)
+                .UpdateSqlContainer(containerName)
+                    .WithThroughput(throughput)
                     .Parent()
-                .ApplyAsync();
-            }
+                .Parent()
+            .ApplyAsync();
 
             return throughput;
 

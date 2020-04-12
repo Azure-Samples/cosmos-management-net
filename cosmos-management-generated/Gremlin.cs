@@ -9,9 +9,33 @@ namespace cosmos_management_generated
 {
     class Gremlin
     {
-        public async Task<List<string>> ListDatabasesAsync(
+
+        public async Task<GremlinDatabaseGetResults> CreateDatabaseAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
+            string accountName, 
+            string databaseName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
+        {
+
+            GremlinDatabaseCreateUpdateParameters gremlinDatabaseCreateUpdateParameters = new GremlinDatabaseCreateUpdateParameters
+            {
+                Resource = new GremlinDatabaseResource
+                {
+                    Id = databaseName
+                },
+                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+            };
+
+            return await cosmosClient.GremlinResources.CreateUpdateGremlinDatabaseAsync(resourceGroupName, accountName, databaseName, gremlinDatabaseCreateUpdateParameters);
+        }
+
+        public async Task<List<string>> ListDatabasesAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
             string accountName)
         {
 
@@ -28,9 +52,9 @@ namespace cosmos_management_generated
         }
 
         public async Task<GremlinDatabaseGetResults> GetDatabaseAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
             string databaseName)
         {
             GremlinDatabaseGetResults gremlinDatabase = await cosmosClient.GremlinResources.GetGremlinDatabaseAsync(resourceGroupName, accountName, databaseName);
@@ -38,70 +62,34 @@ namespace cosmos_management_generated
             Console.WriteLine($"Azure Resource Id: {gremlinDatabase.Id}");
             Console.WriteLine($"Database Name: {gremlinDatabase.Resource.Id}");
 
-            try
-            {
-                ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
-
-                ThroughputSettingsGetPropertiesResource throughput = throughputSettingsGetResults.Resource;
-
-                Console.WriteLine("\nDatabase Throughput\n-----------------------");
-                Console.WriteLine($"Provisioned Database Throughput: {throughput.Throughput}");
-                Console.WriteLine($"Minimum Database Throughput: {throughput.MinimumThroughput}");
-                Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
-
-            }
-            catch { }
+            ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
+            //Output throughput values
+            Console.WriteLine("\nDatabase Throughput\n-----------------------");
+            Throughput.Get(throughputSettingsGetResults.Resource);
 
             Console.WriteLine("\n\n-----------------------\n\n");
 
             return gremlinDatabase;
         }
 
-        public async Task<GremlinDatabaseGetResults> CreateDatabaseAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName, 
-            int throughput)
-        {
-
-            GremlinDatabaseCreateUpdateParameters gremlinDatabaseCreateUpdateParameters = new GremlinDatabaseCreateUpdateParameters
-            {
-                Resource = new GremlinDatabaseResource
-                {
-                    Id = databaseName
-                },
-                Options = new Dictionary<string, string>()
-                {
-                    { "Throughput", throughput.ToString() }
-                }
-            };
-
-            return await cosmosClient.GremlinResources.CreateUpdateGremlinDatabaseAsync(resourceGroupName, accountName, databaseName, gremlinDatabaseCreateUpdateParameters);
-        }
-
         public async Task<int> UpdateDatabaseThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
-            string databaseName, 
-            int throughput)
+            string databaseName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
 
-                ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
 
-                int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
-
-                //Never set below min throughput or will generate exception
-                if (minThroughput > throughput)
-                    throughput = minThroughput;
-
-                await cosmosClient.GremlinResources.UpdateGremlinDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, new
-                    ThroughputSettingsUpdateParameters(new ThroughputSettingsResource(throughput)));
+                await cosmosClient.GremlinResources.UpdateGremlinDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, throughputUpdate);
 
                 return throughput;
             }
@@ -113,29 +101,86 @@ namespace cosmos_management_generated
             }
         }
 
-        public async Task<List<string>> ListGraphsAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName)
-        {
-            IEnumerable<GremlinGraphGetResults> gremlinGraphs = await cosmosClient.GremlinResources.ListGremlinGraphsAsync(resourceGroupName, accountName, databaseName);
-
-            List<string> containerNames = new List<string>();
-
-            foreach (GremlinGraphGetResults gremlinGraph in gremlinGraphs)
-            {
-                containerNames.Add(gremlinGraph.Name);
-            }
-
-            return containerNames;
-        }
-
-        public async Task<GremlinGraphGetResults> GetGraphAsync(
+        public async Task<GremlinGraphGetResults> CreateGraphAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
             string databaseName, 
+            string graphName, 
+            string partitionKey,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
+        {
+            GremlinGraphCreateUpdateParameters gremlinGraphCreateUpdateParameters = new GremlinGraphCreateUpdateParameters
+            {
+                Resource = new GremlinGraphResource
+                {
+                    Id = graphName,
+                    DefaultTtl = -1, //-1 = off, 0 = on no default, >0 = ttl in seconds
+                    PartitionKey = new ContainerPartitionKey
+                    {
+                        Kind = "Hash",
+                        Paths = new List<string> { partitionKey },
+                        Version = 1 //version 2 for large partition key
+                    },
+                    IndexingPolicy = new IndexingPolicy
+                    {
+                        Automatic = true,
+                        IndexingMode = IndexingMode.Consistent,
+                        IncludedPaths = new List<IncludedPath>
+                        {
+                            new IncludedPath { Path = "/*"}
+                        },
+                        ExcludedPaths = new List<ExcludedPath>
+                        {
+                            new ExcludedPath { Path = "/myPathToNotIndex/*"}
+                        },
+                        CompositeIndexes = new List<IList<CompositePath>>
+                        {
+                            new List<CompositePath>
+                            {
+                                new CompositePath { Path = "/myOrderByPath1", Order = CompositePathSortOrder.Ascending },
+                                new CompositePath { Path = "/myOrderByPath2", Order = CompositePathSortOrder.Descending }
+                            },
+                            new List<CompositePath>
+                            {
+                                new CompositePath { Path = "/myOrderByPath3", Order = CompositePathSortOrder.Ascending },
+                                new CompositePath { Path = "/myOrderByPath4", Order = CompositePathSortOrder.Descending }
+                            }
+                        }
+                    }
+                },
+                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+            };
+
+            return await cosmosClient.GremlinResources.CreateUpdateGremlinGraphAsync(resourceGroupName, accountName, databaseName, graphName, gremlinGraphCreateUpdateParameters);
+        }
+
+        public async Task<List<string>> ListGraphsAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName)
+                {
+                    IEnumerable<GremlinGraphGetResults> gremlinGraphs = await cosmosClient.GremlinResources.ListGremlinGraphsAsync(resourceGroupName, accountName, databaseName);
+
+                    List<string> containerNames = new List<string>();
+
+                    foreach (GremlinGraphGetResults gremlinGraph in gremlinGraphs)
+                    {
+                        containerNames.Add(gremlinGraph.Name);
+                    }
+
+                    return containerNames;
+                }
+
+        public async Task<GremlinGraphGetResults> GetGraphAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName,
             string graphName)
         {
             GremlinGraphGetResults gremlinGraph = await cosmosClient.GremlinResources.GetGremlinGraphAsync(resourceGroupName, accountName, databaseName, graphName);
@@ -146,18 +191,10 @@ namespace cosmos_management_generated
             GremlinGraphGetPropertiesResource properties = gremlinGraph.Resource;
             Console.WriteLine($"Graph Name: {properties.Id}");
 
-            try
-            {
-                ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinGraphThroughputAsync(resourceGroupName, accountName, databaseName, graphName);
-
-                ThroughputSettingsGetPropertiesResource throughput = throughputSettingsGetResults.Resource;
-
-                Console.WriteLine("\nContainer Throughput\n-----------------------");
-                Console.WriteLine($"Provisioned Container Throughput: {throughput.Throughput}");
-                Console.WriteLine($"Minimum Container Throughput: {throughput.MinimumThroughput}");
-                Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
-            }
-            catch { }
+            ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinGraphThroughputAsync(resourceGroupName, accountName, databaseName, graphName);
+            //Output throughput values
+            Console.WriteLine("\nGraph Throughput\n-----------------------");
+            Throughput.Get(throughputSettingsGetResults.Resource);
 
             int? ttl = properties.DefaultTtl.GetValueOrDefault();
             if (ttl == 0)
@@ -264,86 +301,25 @@ namespace cosmos_management_generated
             return gremlinGraph;
         }
 
-        public async Task<GremlinGraphGetResults> CreateGraphAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName, 
-            string graphName, 
-            string partitionKey, 
-            int throughput)
-        {
-            GremlinGraphCreateUpdateParameters gremlinGraphCreateUpdateParameters = new GremlinGraphCreateUpdateParameters
-            {
-                Resource = new GremlinGraphResource
-                {
-                    Id = graphName,
-                    DefaultTtl = -1, //-1 = off, 0 = on no default, >0 = ttl in seconds
-                    PartitionKey = new ContainerPartitionKey
-                    {
-                        Kind = "Hash",
-                        Paths = new List<string> { partitionKey },
-                        Version = 1 //version 2 for large partition key
-                    },
-                    IndexingPolicy = new IndexingPolicy
-                    {
-                        Automatic = true,
-                        IndexingMode = IndexingMode.Consistent,
-                        IncludedPaths = new List<IncludedPath>
-                        {
-                            new IncludedPath { Path = "/*"}
-                        },
-                        ExcludedPaths = new List<ExcludedPath>
-                        {
-                            new ExcludedPath { Path = "/myPathToNotIndex/*"}
-                        },
-                        CompositeIndexes = new List<IList<CompositePath>>
-                        {
-                            new List<CompositePath>
-                            {
-                                new CompositePath { Path = "/myOrderByPath1", Order = CompositePathSortOrder.Ascending },
-                                new CompositePath { Path = "/myOrderByPath2", Order = CompositePathSortOrder.Descending }
-                            },
-                            new List<CompositePath>
-                            {
-                                new CompositePath { Path = "/myOrderByPath3", Order = CompositePathSortOrder.Ascending },
-                                new CompositePath { Path = "/myOrderByPath4", Order = CompositePathSortOrder.Descending }
-                            }
-                        }
-                    }
-                },
-                Options = new Dictionary<string, string>()
-                {
-                    { "Throughput", throughput.ToString() }
-                }
-            };
-
-            return await cosmosClient.GremlinResources.CreateUpdateGremlinGraphAsync(resourceGroupName, accountName, databaseName, graphName, gremlinGraphCreateUpdateParameters);
-        }
-
         public async Task<int> UpdateGraphThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
             string databaseName, 
-            string graphName, 
-            int throughput)
+            string graphName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinGraphThroughputAsync(resourceGroupName, accountName, databaseName, graphName);
 
-                ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
 
-                int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
-
-                //Never set below min throughput or will generate exception
-                if (minThroughput > throughput)
-                    throughput = minThroughput;
-
-                await cosmosClient.GremlinResources.UpdateGremlinGraphThroughputAsync(resourceGroupName, accountName, databaseName, graphName, new
-                ThroughputSettingsUpdateParameters(new ThroughputSettingsResource(throughput)));
+                await cosmosClient.GremlinResources.UpdateGremlinGraphThroughputAsync(resourceGroupName, accountName, databaseName, graphName, throughputUpdate);
 
                 return throughput;
             }
@@ -377,8 +353,7 @@ namespace cosmos_management_generated
                     DefaultTtl = gremlinGraphGet.Resource.DefaultTtl,
                     IndexingPolicy = gremlinGraphGet.Resource.IndexingPolicy
                 },
-                Tags = gremlinGraphGet.Tags,
-                Options = new Dictionary<string, string>() { }
+                Tags = gremlinGraphGet.Tags
             };
 
             //PartitionKey cannot be updated

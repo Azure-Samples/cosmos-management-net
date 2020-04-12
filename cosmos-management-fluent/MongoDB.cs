@@ -73,12 +73,8 @@ namespace cosmos_management_fluent
 
             try
             {
-                ThroughputSettingsGetPropertiesResource throughput = await GetCollectionThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
-
                 Console.WriteLine("\nCollection Throughput\n-----------------------");
-                Console.WriteLine($"Provisioned Collection Throughput: {throughput.Throughput}");
-                Console.WriteLine($"Minimum Collection Throughput: {throughput.MinimumThroughput}");
-                Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
+                ThroughputSettingsGetPropertiesResource throughput = await GetCollectionThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
             }
             catch { }
 
@@ -152,29 +148,24 @@ namespace cosmos_management_fluent
             var throughputSettings = await GetCollectionThroughputSettingsAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
 
             if (throughputSettings.OfferReplacePending == "true")
+                Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
+
+            int minThroughput = Convert.ToInt32(throughputSettings.MinimumThroughput);
+
+            //Check if passed throughput is less than minimum allowable
+            if (throughput < minThroughput)
             {
-                Console.WriteLine($"Cannot update throughput while a throughput update is in progress");
-                throughput = 0;
+                Console.WriteLine($"Throughput value passed: {throughput} is below Minimum allowable throughput {minThroughput}. Setting to minimum throughput.");
+                throughput = minThroughput;
             }
-            else
-            {
-                int minThroughput = Convert.ToInt32(throughputSettings.MinimumThroughput);
 
-                //Check if passed throughput is less than minimum allowable
-                if (throughput < minThroughput)
-                {
-                    Console.WriteLine($"Throughput value passed: {throughput} is below Minimum allowable throughput {minThroughput}. Setting to minimum throughput.");
-                    throughput = minThroughput;
-                }
-
-                await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
-                .UpdateMongoDB(databaseName)
-                    .UpdateCollection(collectionName)
-                        .WithThroughput(throughput)
-                        .Parent()
+            await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
+            .UpdateMongoDB(databaseName)
+                .UpdateCollection(collectionName)
+                    .WithThroughput(throughput)
                     .Parent()
-                .ApplyAsync();
-            }
+                .Parent()
+            .ApplyAsync();
 
             return throughput;
 

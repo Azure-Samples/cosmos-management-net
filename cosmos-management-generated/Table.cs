@@ -11,9 +11,32 @@ namespace cosmos_management_generated
     class Table
     {
 
-        public async Task<List<string>> ListTablesAsync(
+        public async Task<TableGetResults> CreateTableAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
+            string accountName, 
+            string tableName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
+        {
+            TableCreateUpdateParameters tableCreateUpdateParameters = new TableCreateUpdateParameters
+            {
+                Resource = new TableResource
+                {
+                    Id = tableName
+                },
+                //Account-level shared throughput is not supported via Control Plane
+                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+            };
+
+            return await cosmosClient.TableResources.CreateUpdateTableAsync(resourceGroupName, accountName, tableName, tableCreateUpdateParameters);
+        }
+
+        public async Task<List<string>> ListTablesAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
             string accountName)
         {
             IEnumerable<TableGetResults> tables = await cosmosClient.TableResources.ListTablesAsync(resourceGroupName, accountName);
@@ -29,9 +52,9 @@ namespace cosmos_management_generated
         }
 
         public async Task<TableGetResults> GetTableAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
             string tableName)
         {
             TableGetResults table = await cosmosClient.TableResources.GetTableAsync(resourceGroupName, accountName, tableName);
@@ -42,66 +65,32 @@ namespace cosmos_management_generated
             TableGetPropertiesResource properties = table.Resource;
             Console.WriteLine($"Table Name: {properties.Id}");
 
-            try
-            {
-                ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.GetTableThroughputAsync(resourceGroupName, accountName, tableName);
-
-                ThroughputSettingsGetPropertiesResource throughput = throughputSettingsGetResults.Resource;
-
-                Console.WriteLine("\nTable Throughput\n-----------------------");
-                Console.WriteLine($"Provisioned Table Throughput: {throughput.Throughput}");
-                Console.WriteLine($"Minimum Table Throughput: {throughput.MinimumThroughput}");
-                Console.WriteLine($"Offer Replace Pending: {throughput.OfferReplacePending}");
-            }
-            catch { }
+            ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.GetTableThroughputAsync(resourceGroupName, accountName, tableName);
+            //Output throughput values
+            Console.WriteLine("\nTable Throughput\n-----------------------");
+            Throughput.Get(throughputSettingsGetResults.Resource);
 
             return table;
         }
-
-        public async Task<TableGetResults> CreateTableAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string tableName, 
-            int? throughput = null)
-        {
-            TableCreateUpdateParameters tableCreateUpdateParameters = new TableCreateUpdateParameters
-            {
-                Resource = new TableResource
-                {
-                    Id = tableName
-                },
-                Options = new Dictionary<string, string>()
-                {
-                    { "Throughput", throughput.ToString() }
-                }
-            };
-
-            return await cosmosClient.TableResources.CreateUpdateTableAsync(resourceGroupName, accountName, tableName, tableCreateUpdateParameters);
-        }
-
+        
         public async Task<int> UpdateTableThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
-            string tableName, 
-            int throughput)
+            string tableName,
+            int throughput,
+            bool? autoScale = false,
+            bool? autoUpgrade = false,
+            int? incrementPercent = null)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.GetTableThroughputAsync(resourceGroupName, accountName, tableName);
 
-                ThroughputSettingsGetPropertiesResource throughputResource = throughputSettingsGetResults.Resource;
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
 
-                int minThroughput = Convert.ToInt32(throughputResource.MinimumThroughput);
-
-                //Never set below min throughput or will generate exception
-                if (minThroughput > throughput)
-                    throughput = minThroughput;
-
-                await cosmosClient.TableResources.UpdateTableThroughputAsync(resourceGroupName, accountName, tableName, new
-                ThroughputSettingsUpdateParameters(new ThroughputSettingsResource(throughput)));
+                await cosmosClient.TableResources.UpdateTableThroughputAsync(resourceGroupName, accountName, tableName, throughputUpdate);
 
                 return throughput;
             }
@@ -129,7 +118,6 @@ namespace cosmos_management_generated
                 {
                     Id = tableName,
                 },
-                Options = new Dictionary<string, string>() { },
                 Tags = tableGet.Tags 
             };
 

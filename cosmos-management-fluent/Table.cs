@@ -66,27 +66,22 @@ namespace cosmos_management_fluent
             var throughputSettings = await GetTableThroughputSettingsAsync(azure, resourceGroupName, accountName, tableName);
 
             if (throughputSettings.OfferReplacePending == "true")
-            {
-                Console.WriteLine($"Cannot update throughput while a throughput update is in progress");
-                throughput = 0;
-            }
-            else
-            {
-                int minThroughput = Convert.ToInt32(throughputSettings.MinimumThroughput);
+                Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
 
-                //Check if passed throughput is less than minimum allowable
-                if (throughput < minThroughput)
-                {
-                    Console.WriteLine($"Throughput value passed: {throughput} is below Minimum allowable throughput {minThroughput}. Setting to minimum throughput.");
-                    throughput = minThroughput;
-                }
+            int minThroughput = Convert.ToInt32(throughputSettings.MinimumThroughput);
 
-                await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
-                .UpdateTable(tableName)
-                    .WithThroughput(throughput)
-                    .Parent()
-                .ApplyAsync();
+            //Check if passed throughput is less than minimum allowable
+            if (throughput < minThroughput)
+            {
+                Console.WriteLine($"Throughput value passed: {throughput} is below Minimum allowable throughput {minThroughput}. Setting to minimum throughput.");
+                throughput = minThroughput;
             }
+
+            await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
+            .UpdateTable(tableName)
+                .WithThroughput(throughput)
+                .Parent()
+            .ApplyAsync();
 
             return throughput;
         }
