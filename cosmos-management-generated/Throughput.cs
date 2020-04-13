@@ -58,7 +58,9 @@ namespace cosmos_management_generated
         {
             try
             {
-                if (resource.Throughput.HasValue)
+                ProvisionedThroughputSettingsResource autoscale = resource.ProvisionedThroughputSettings;
+
+                if (autoscale == null)
                 {
                     Console.WriteLine($"Manual Provisioned Throughput: {resource.Throughput}");
                     Console.WriteLine($"Minimum Throughput: {resource.MinimumThroughput}");
@@ -66,8 +68,6 @@ namespace cosmos_management_generated
                 }
                 else
                 {
-                    ProvisionedThroughputSettingsResource autoscale = resource.ProvisionedThroughputSettings;
-
                     Console.WriteLine($"Max Autoscale Throughput: {autoscale.MaxThroughput}");
 
                     if (autoscale.AutoUpgradePolicy.ThroughputPolicy.IsEnabled.GetValueOrDefault())
