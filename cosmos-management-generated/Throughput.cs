@@ -10,44 +10,24 @@ namespace cosmos_management_generated
 
         static public CreateUpdateOptions Create (
             int throughput, 
-            bool? isAutoScale = false, 
-            bool? isAutoUpgrade = false, 
-            int? incrementPercent = null)
+            bool? isAutoScale = false)
         {
 
             CreateUpdateOptions createUpdateOptions = new CreateUpdateOptions();
             ProvisionedThroughputSettingsResource autoscaleThroughput;
 
-            if (!isAutoScale.Value)
+            if (isAutoScale.Value)
             {
-                createUpdateOptions.Throughput = throughput.ToString();
-            }
-            else
-            {
-                if (!isAutoUpgrade.Value)
-                {
-                    autoscaleThroughput = new ProvisionedThroughputSettingsResource { MaxThroughput = throughput };
-                }    
-                else
-                {
-                    autoscaleThroughput = new ProvisionedThroughputSettingsResource
-                    {
-                        MaxThroughput = throughput,
-                        AutoUpgradePolicy = new AutoUpgradePolicyResource
-                        {
-                            ThroughputPolicy = new ThroughputPolicyResource
-                            {
-                                IsEnabled = true,
-                                IncrementPercent = incrementPercent
-                            }
-                        }
-                    };
-                }   
+                autoscaleThroughput = new ProvisionedThroughputSettingsResource { MaxThroughput = throughput };
 
                 createUpdateOptions.AdditionalProperties = new Dictionary<string, string>()
                 {
                     { "ProvisionedThroughputSettings", autoscaleThroughput.ToString().Replace("\"", "\\\"") }
                 };
+            }
+            else
+            {
+                createUpdateOptions.Throughput = throughput.ToString();
             }
 
             return createUpdateOptions;
@@ -69,9 +49,6 @@ namespace cosmos_management_generated
                 else
                 {
                     Console.WriteLine($"Max Autoscale Throughput: {autoscale.MaxThroughput}");
-
-                    if (autoscale.AutoUpgradePolicy.ThroughputPolicy.IsEnabled.GetValueOrDefault())
-                        Console.WriteLine($"Auto Upgrade Increment Percentage: {autoscale.AutoUpgradePolicy.ThroughputPolicy.IncrementPercent.Value}");
                 }
             }
             catch { }
@@ -80,9 +57,7 @@ namespace cosmos_management_generated
         static public ThroughputSettingsUpdateParameters Update (
             ThroughputSettingsGetPropertiesResource resource,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             ThroughputSettingsUpdateParameters throughputUpdate = new ThroughputSettingsUpdateParameters();
@@ -103,12 +78,6 @@ namespace cosmos_management_generated
             else //autoscale
             {
                 throughputUpdate.Resource.ProvisionedThroughputSettings.MaxThroughput = throughput;
-
-                if(autoUpgrade.GetValueOrDefault())
-                {
-                    throughputUpdate.Resource.ProvisionedThroughputSettings.AutoUpgradePolicy.ThroughputPolicy.IsEnabled = true;
-                    throughputUpdate.Resource.ProvisionedThroughputSettings.AutoUpgradePolicy.ThroughputPolicy.IncrementPercent = incrementPercent.Value;
-                }
             }
 
             return throughputUpdate;

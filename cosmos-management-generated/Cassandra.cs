@@ -15,9 +15,7 @@ namespace cosmos_management_generated
             string accountName, 
             string keyspaceName,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             CassandraKeyspaceCreateUpdateParameters cassandraKeyspaceCreateUpdateParameters = new CassandraKeyspaceCreateUpdateParameters
@@ -26,7 +24,7 @@ namespace cosmos_management_generated
                 {
                     Id = keyspaceName
                 },
-                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+                Options = Throughput.Create(throughput, autoScale)
             };
 
             return await cosmosClient.CassandraResources.CreateUpdateCassandraKeyspaceAsync(resourceGroupName, accountName, keyspaceName, cassandraKeyspaceCreateUpdateParameters);
@@ -79,16 +77,14 @@ namespace cosmos_management_generated
             string accountName, 
             string keyspaceName,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.GetCassandraKeyspaceThroughputAsync(resourceGroupName, accountName, keyspaceName);
 
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.CassandraResources.UpdateCassandraKeyspaceThroughputAsync(resourceGroupName, accountName, keyspaceName, throughputUpdate);
 
@@ -111,9 +107,7 @@ namespace cosmos_management_generated
             string tableName, 
             string partitionKey,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             CassandraTableCreateUpdateParameters cassandraTableCreateUpdateParameters = new CassandraTableCreateUpdateParameters
@@ -143,7 +137,7 @@ namespace cosmos_management_generated
                         }
                     }
                 },
-                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+                Options = Throughput.Create(throughput, autoScale)
             };
 
             return await cosmosClient.CassandraResources.CreateUpdateCassandraTableAsync(resourceGroupName, accountName, keyspaceName, tableName, cassandraTableCreateUpdateParameters);
@@ -225,16 +219,14 @@ namespace cosmos_management_generated
             string keyspaceName, 
             string tableName,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.GetCassandraTableThroughputAsync(resourceGroupName, accountName, keyspaceName, tableName);
 
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.CassandraResources.UpdateCassandraTableThroughputAsync(resourceGroupName, accountName, keyspaceName, tableName, throughputUpdate);
 
