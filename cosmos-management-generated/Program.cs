@@ -150,9 +150,7 @@ namespace cosmos_management_generated
             bool autoScale = true;
             int maxThroughput = 4000;
             int newMaxThroughput = 8000;
-            bool autoUpgrade = false;
-            int incrementPercent = 20;
-            
+           
 
             string storedProcedureName = "storedProcedure1";
             string triggerName = "preTriggerAll1";
@@ -171,19 +169,19 @@ namespace cosmos_management_generated
 
             //Database
             await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName, throughput); //manual throughput
-            await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName, maxThroughput, autoScale, autoUpgrade, incrementPercent); //autoscale throughput
+            await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName, maxThroughput, autoScale); //autoscale throughput
             await sql.ListDatabasesAsync(cosmosClient, resourceGroupName, accountName);
             await sql.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName);
-            await sql.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, newMaxThroughput, autoScale, autoUpgrade, incrementPercent);
-            //await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, newMaxThroughput, autoScale, autoUpgrade, incrementPercent);
+            await sql.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, newMaxThroughput, autoScale);
+            //await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, newMaxThroughput, autoScale);
 
             //Container
             await sql.CreateContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName, partitionKey, throughput);
-            await sql.CreateContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName, partitionKey, maxThroughput, autoScale, autoUpgrade, incrementPercent);
+            await sql.CreateContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName, partitionKey, maxThroughput, autoScale);
             await sql.ListContainersAsync(cosmosClient, resourceGroupName, accountName, databaseName);
             await sql.GetContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName);
             await sql.UpdateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName, newThroughput);
-            //await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName, maxThroughput, true, true, 10);
+            //await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName, maxThroughput, true);
             await sql.UpdateContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, containerName, ttl);
 
             //Server-Side

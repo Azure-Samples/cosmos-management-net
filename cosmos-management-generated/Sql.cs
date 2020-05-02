@@ -16,9 +16,7 @@ namespace cosmos_management_generated
             string accountName, 
             string databaseName, 
             int throughput,
-            bool? autoScale = false, 
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             SqlDatabaseCreateUpdateParameters sqlDatabaseCreateUpdateParameters = new SqlDatabaseCreateUpdateParameters
@@ -27,7 +25,7 @@ namespace cosmos_management_generated
                 {
                     Id = databaseName
                 },
-                Options = Throughput.Create(throughput,autoScale, autoUpgrade, incrementPercent)
+                Options = Throughput.Create(throughput, autoScale)
             };
 
             return await cosmosClient.SqlResources.CreateUpdateSqlDatabaseAsync(resourceGroupName, accountName, databaseName, sqlDatabaseCreateUpdateParameters);
@@ -78,15 +76,13 @@ namespace cosmos_management_generated
             string accountName, 
             string databaseName, 
             int throughput, 
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.GetSqlDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
 
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.SqlResources.UpdateSqlDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, throughputUpdate);
 
@@ -106,9 +102,7 @@ namespace cosmos_management_generated
         string accountName,
         string databaseName,
         int throughput,
-        bool? autoScale = false,
-        bool? autoUpgrade = false,
-        int? incrementPercent = null)
+        bool? autoScale = false)
         {
             try
             {
@@ -133,9 +127,7 @@ namespace cosmos_management_generated
             string containerName, 
             string partitionKey,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
             SqlContainerCreateUpdateParameters sqlContainerCreateUpdateParameters = new SqlContainerCreateUpdateParameters
             {
@@ -200,7 +192,7 @@ namespace cosmos_management_generated
                         ConflictResolutionPath = "/myConflictResolverPath"
                     },
                 },
-                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+                Options = Throughput.Create(throughput, autoScale)
             };
 
             return await cosmosClient.SqlResources.CreateUpdateSqlContainerAsync(resourceGroupName, accountName, databaseName, containerName, sqlContainerCreateUpdateParameters);
@@ -374,16 +366,14 @@ namespace cosmos_management_generated
             string databaseName, 
             string containerName, 
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.GetSqlContainerThroughputAsync(resourceGroupName, accountName, databaseName, containerName);
 
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.SqlResources.UpdateSqlContainerThroughputAsync(resourceGroupName, accountName, databaseName, containerName, throughputUpdate);
 
@@ -404,9 +394,7 @@ namespace cosmos_management_generated
         string databaseName,
         string containerName,
         int throughput,
-        bool? autoScale = false,
-        bool? autoUpgrade = false,
-        int? incrementPercent = null)
+        bool? autoScale = false)
         {
 
             try
