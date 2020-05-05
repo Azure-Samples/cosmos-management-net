@@ -1,7 +1,6 @@
-﻿using Microsoft.Azure.Management.CosmosDB.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using Microsoft.Azure.Management.CosmosDB.Models;
 
 namespace cosmos_management_generated
 {
