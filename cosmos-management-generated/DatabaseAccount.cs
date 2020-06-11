@@ -72,23 +72,21 @@ namespace cosmos_management_generated
 
 			Console.WriteLine($"Resource Id: {databaseAccount.Id}");
 			Console.WriteLine($"Name: {databaseAccount.Name}");
+			Console.WriteLine($"Free Tier: {databaseAccount.EnableFreeTier.GetValueOrDefault()}");
 			Console.WriteLine($"Api: {GetApi(databaseAccount)}");
 			
 			foreach(string capability in GetCapabilities(databaseAccount))
 			{
 				Console.WriteLine($"Capability: {capability}");
 			}
-			
-			Console.WriteLine($"Default Consistency Level: {databaseAccount.ConsistencyPolicy.DefaultConsistencyLevel.ToString()}");
-			Console.WriteLine($"Connection Endpoint: {databaseAccount.DocumentEndpoint}");
 
-			if(databaseAccount.IsVirtualNetworkFilterEnabled.GetValueOrDefault())
+			if(databaseAccount.ApiProperties.ServerVersion.Length > 0)
 			{
-				foreach(VirtualNetworkRule virtualNetworkRule in databaseAccount.VirtualNetworkRules)
-				{
-					Console.WriteLine($"Virtual Network Rule: {virtualNetworkRule.Id}");
-				}
+				Console.WriteLine($"Server Version: {databaseAccount.ApiProperties.ServerVersion}");
 			}
+			
+			Console.WriteLine($"Default Consistency Level: {databaseAccount.ConsistencyPolicy.DefaultConsistencyLevel}");
+			Console.WriteLine($"Connection Endpoint: {databaseAccount.DocumentEndpoint}");
 
 			bool isMultiMaster = false;
 			if (databaseAccount.EnableMultipleWriteLocations.GetValueOrDefault())
@@ -96,11 +94,6 @@ namespace cosmos_management_generated
 				isMultiMaster = true;
 				Console.WriteLine("Multi-Master Enabled: true");
 			}
-
-			Console.WriteLine($"Enable Automatic Failover: {databaseAccount.EnableAutomaticFailover.GetValueOrDefault().ToString()}");
-
-			if (databaseAccount.IpRangeFilter.Length > 0)
-				Console.WriteLine($"IP Range Filter: {databaseAccount.IpRangeFilter}");
 
 			Console.WriteLine("\nList Region Replicas for Cosmos Account\n------------------------------------");
 			foreach (Location location in databaseAccount.Locations)
@@ -113,6 +106,44 @@ namespace cosmos_management_generated
 				Console.WriteLine($"Is Availability Zone: {location.IsZoneRedundant}");
 				Console.WriteLine("------------------------------------");
 			}
+
+			Console.WriteLine($"Enable Automatic Failover: {databaseAccount.EnableAutomaticFailover.GetValueOrDefault()}");
+
+			Console.WriteLine($"Control Plane locked to RBAC only: {databaseAccount.DisableKeyBasedMetadataWriteAccess.GetValueOrDefault()}");
+
+			if (databaseAccount.KeyVaultKeyUri.Length > 0)
+				Console.WriteLine($"KeyVault Uri: {databaseAccount.KeyVaultKeyUri}");
+
+			if (databaseAccount.IpRules.Count > 0)
+			{
+				Console.WriteLine("\nIP Rules\n------------------------------------");
+				foreach (IpAddressOrRange ipAddress in databaseAccount.IpRules)
+				{
+					Console.WriteLine($"\tIP Address or Range: {ipAddress.IpAddressOrRangeProperty}");
+				}
+			}
+
+			if (databaseAccount.IsVirtualNetworkFilterEnabled.GetValueOrDefault())
+			{
+				Console.WriteLine("\nVirtual Network Rules\n------------------------------------");
+				foreach (VirtualNetworkRule virtualNetworkRule in databaseAccount.VirtualNetworkRules)
+				{
+					Console.WriteLine($"\tVirtual Network Rule: {virtualNetworkRule.Id}");
+				}
+			}
+
+			if(databaseAccount.PrivateEndpointConnections.Count > 0)
+			{
+				Console.WriteLine("\nPrivate Endpoint Connections\n------------------------------------");
+				foreach(PrivateEndpointConnection privateEndpoint in databaseAccount.PrivateEndpointConnections)
+				{
+					Console.WriteLine($"\tName: {privateEndpoint.Name}");
+					Console.WriteLine($"\tType: {privateEndpoint.Type}");
+					Console.WriteLine($"\tConnection Status: {privateEndpoint.PrivateLinkServiceConnectionState.Status}");
+					Console.WriteLine($"\tActions Required: {privateEndpoint.PrivateLinkServiceConnectionState.ActionsRequired}");
+				}
+			}
+			
 
 			return databaseAccount;
 		}
@@ -236,6 +267,8 @@ namespace cosmos_management_generated
 					break;
 				case Api.MongoDB:
 					createUpdateParameters.Kind = "MongoDB";
+					ApiProperties apiProperties = new ApiProperties { ServerVersion = "3.6" };
+					createUpdateParameters.ApiProperties = apiProperties;
 					break;
 				case Api.Cassandra:
 					createUpdateParameters.Capabilities = new List<Capability> { new Capability { Name = "EnableCassandra" } };
@@ -259,7 +292,7 @@ namespace cosmos_management_generated
 			{
 				if (cosmosAccount.Capabilities.Count > 0)
 				{
-					foreach (Microsoft.Azure.Management.CosmosDB.Models.Capability capability in cosmosAccount.Capabilities)
+					foreach (Capability capability in cosmosAccount.Capabilities)
 					{
 						switch (capability.Name)
 						{

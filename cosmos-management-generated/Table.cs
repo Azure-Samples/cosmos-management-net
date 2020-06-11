@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.Rest;
 using Microsoft.Azure.Management.CosmosDB;
 using Microsoft.Azure.Management.CosmosDB.Models;
 
@@ -16,10 +15,8 @@ namespace cosmos_management_generated
             string resourceGroupName, 
             string accountName, 
             string tableName,
-            int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            int? throughput = null,
+            bool? autoScale = false)
         {
             TableCreateUpdateParameters tableCreateUpdateParameters = new TableCreateUpdateParameters
             {
@@ -28,7 +25,7 @@ namespace cosmos_management_generated
                     Id = tableName
                 },
                 //Account-level shared throughput is not supported via Control Plane
-                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+                Options = Throughput.Create(throughput, autoScale)
             };
 
             return await cosmosClient.TableResources.CreateUpdateTableAsync(resourceGroupName, accountName, tableName, tableCreateUpdateParameters);
@@ -68,7 +65,7 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.GetTableThroughputAsync(resourceGroupName, accountName, tableName);
             //Output throughput values
             Console.WriteLine("\nTable Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             return table;
         }
@@ -79,16 +76,14 @@ namespace cosmos_management_generated
             string accountName, 
             string tableName,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.GetTableThroughputAsync(resourceGroupName, accountName, tableName);
 
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.TableResources.UpdateTableThroughputAsync(resourceGroupName, accountName, tableName, throughputUpdate);
 
@@ -118,6 +113,7 @@ namespace cosmos_management_generated
                 {
                     Id = tableName,
                 },
+                Options = new CreateUpdateOptions(),
                 Tags = tableGet.Tags 
             };
 

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.Rest;
 using Microsoft.Azure.Management.CosmosDB;
 using Microsoft.Azure.Management.CosmosDB.Models;
 
@@ -15,7 +14,7 @@ namespace cosmos_management_generated
             string resourceGroupName, 
             string accountName, 
             string databaseName, 
-            int throughput,
+            int? throughput = null,
             bool? autoScale = false)
         {
 
@@ -25,6 +24,7 @@ namespace cosmos_management_generated
                 {
                     Id = databaseName
                 },
+                //If throughput is null, return empty options, for dedicated container throughput
                 Options = Throughput.Create(throughput, autoScale)
             };
 
@@ -63,14 +63,14 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.GetSqlDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
             //Output throughput values
             Console.WriteLine("\nDatabase Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             Console.WriteLine("\n\n-----------------------\n\n");
 
             return sqlDatabase;
         }
 
-        public async Task<int> UpdateDatabaseThroughputAsync(
+        public async Task UpdateDatabaseThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
@@ -85,39 +85,25 @@ namespace cosmos_management_generated
                 ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.SqlResources.UpdateSqlDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, throughputUpdate);
-
-                return throughput;
             }
             catch 
             {
                 Console.WriteLine("Database throughput not set\nPress any key to continue");
                 Console.ReadKey();
-                return 0;
             }
         }
 
-        public async Task<int> MigrateDatabaseThroughputAsync(
-        CosmosDBManagementClient cosmosClient,
-        string resourceGroupName,
-        string accountName,
-        string databaseName,
-        int throughput,
-        bool? autoScale = false)
-        {
-            try
+        public async Task MigrateDatabaseThroughputAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName,
+            int throughput,
+            bool? autoScale = false)
             {
+                throw new Exception("Not implemented");
 
-                Console.WriteLine("Not implemented.\nPress any key to continue");
-
-                return 0;
             }
-            catch
-            {
-                Console.WriteLine("Database throughput not set\nPress any key to continue");
-                Console.ReadKey();
-                return 0;
-            }
-        }
 
         public async Task<SqlContainerGetResults> CreateContainerAsync(
             CosmosDBManagementClient cosmosClient, 
@@ -126,7 +112,7 @@ namespace cosmos_management_generated
             string databaseName, 
             string containerName, 
             string partitionKey,
-            int throughput,
+            int? throughput = null,
             bool? autoScale = false)
         {
             SqlContainerCreateUpdateParameters sqlContainerCreateUpdateParameters = new SqlContainerCreateUpdateParameters
@@ -143,6 +129,7 @@ namespace cosmos_management_generated
                     },
                     IndexingPolicy = new IndexingPolicy
                     {
+                        Automatic = true,
                         IndexingMode = IndexingMode.Consistent,
                         IncludedPaths = new List<IncludedPath>
                         {
@@ -190,8 +177,10 @@ namespace cosmos_management_generated
                     {
                         Mode = ConflictResolutionMode.LastWriterWins,
                         ConflictResolutionPath = "/myConflictResolverPath"
-                    },
+                    }
                 },
+                //If throughput is null, return empty options for shared container throughput
+                //unless database has no throughput, then defaults to 400 RU/s container
                 Options = Throughput.Create(throughput, autoScale)
             };
 
@@ -234,7 +223,7 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.GetSqlContainerThroughputAsync(resourceGroupName, accountName, databaseName, containerName);
             //Output throughput values
             Console.WriteLine("\nContainer Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             int? ttl = properties.DefaultTtl.GetValueOrDefault();
             if (ttl == 0)
@@ -262,7 +251,7 @@ namespace cosmos_management_generated
             Console.WriteLine($"Indexing Mode: {indexingPolicy.IndexingMode}");
             Console.WriteLine($"Automatic: {indexingPolicy.Automatic.Value.ToString()}");
 
-            if (indexingPolicy.IncludedPaths.Count > 0)
+            if (indexingPolicy.IncludedPaths != null)
             {
                 Console.WriteLine("\tIncluded Paths\n\t-----------------------");
                 foreach (IncludedPath path in indexingPolicy.IncludedPaths)
@@ -272,7 +261,7 @@ namespace cosmos_management_generated
                 Console.WriteLine("\n\t-----------------------");
             }
 
-            if (indexingPolicy.ExcludedPaths.Count > 0)
+            if (indexingPolicy.ExcludedPaths != null)
             {
                 Console.WriteLine("\tExcluded Paths\n\t-----------------------");
                 foreach (ExcludedPath path in indexingPolicy.ExcludedPaths)
@@ -282,7 +271,7 @@ namespace cosmos_management_generated
                 Console.WriteLine("\n\t-----------------------");
             }
 
-            if (indexingPolicy.SpatialIndexes.Count > 0)
+            if (indexingPolicy.SpatialIndexes != null)
             {
                 Console.WriteLine("\tSpatial Indexes\n\t-----------------------");
                 foreach (SpatialSpec spec in indexingPolicy.SpatialIndexes)
@@ -297,7 +286,7 @@ namespace cosmos_management_generated
                 Console.WriteLine("\n\t-----------------------");
             }
 
-            if (indexingPolicy.CompositeIndexes.Count > 0)
+            if (indexingPolicy.CompositeIndexes != null)
             {
                 Console.WriteLine("\tComposite Indexes\n\t-----------------------");
 
@@ -316,7 +305,7 @@ namespace cosmos_management_generated
                 }
             }
 
-            if (properties.UniqueKeyPolicy.UniqueKeys.Count > 0)
+            if (properties.UniqueKeyPolicy != null)
             {
                 Console.WriteLine("Unique Key Policies\n\t-----------------------");
                 int iKey = 1;
@@ -359,7 +348,7 @@ namespace cosmos_management_generated
             return sqlContainer;
         }
 
-        public async Task<int> UpdateContainerThroughputAsync(
+        public async Task UpdateContainerThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
@@ -376,40 +365,27 @@ namespace cosmos_management_generated
                 ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.SqlResources.UpdateSqlContainerThroughputAsync(resourceGroupName, accountName, databaseName, containerName, throughputUpdate);
-
-                return throughput;
             }
             catch
             {
                 Console.WriteLine("Container throughput not set\nPress any key to continue");
                 Console.ReadKey();
-                return 0;
             }
         }
 
-        public async Task<int> MigrateContainerThroughputAsync(
-        CosmosDBManagementClient cosmosClient,
-        string resourceGroupName,
-        string accountName,
-        string databaseName,
-        string containerName,
-        int throughput,
-        bool? autoScale = false)
-        {
-
-            try
+        public async Task MigrateContainerThroughputAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName,
+            string containerName,
+            int throughput,
+            bool? autoScale = false)
             {
-                Console.WriteLine("Not implemented.\nPress any key to continue");
 
-                return 0;
+                throw new Exception("Not implemented");
+            
             }
-            catch
-            {
-                Console.WriteLine("Container throughput not set\nPress any key to continue");
-                Console.ReadKey();
-                return 0;
-            }
-        }
 
         public async Task<SqlContainerGetResults> UpdateContainerAsync(
             CosmosDBManagementClient cosmosClient, 
@@ -434,8 +410,9 @@ namespace cosmos_management_generated
                     UniqueKeyPolicy = sqlContainerGet.Resource.UniqueKeyPolicy,
                     DefaultTtl = sqlContainerGet.Resource.DefaultTtl,
                     IndexingPolicy = sqlContainerGet.Resource.IndexingPolicy,
-                    ConflictResolutionPolicy = sqlContainerGet.Resource.ConflictResolutionPolicy
+                    ConflictResolutionPolicy = sqlContainerGet.Resource.ConflictResolutionPolicy,
                 },
+                Options = new CreateUpdateOptions(),
                 Tags = sqlContainerGet.Tags
             };
 

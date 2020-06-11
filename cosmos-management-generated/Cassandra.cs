@@ -14,7 +14,7 @@ namespace cosmos_management_generated
             string resourceGroupName, 
             string accountName, 
             string keyspaceName,
-            int throughput,
+            int? throughput = null,
             bool? autoScale = false)
         {
 
@@ -64,7 +64,7 @@ namespace cosmos_management_generated
 
             //Output throughput values
             Console.WriteLine("\nKeyspace Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
             
             Console.WriteLine("\n\n-----------------------\n\n");
 
@@ -105,8 +105,7 @@ namespace cosmos_management_generated
             string accountName, 
             string keyspaceName, 
             string tableName, 
-            string partitionKey,
-            int throughput,
+            int? throughput = null,
             bool? autoScale = false)
         {
 
@@ -115,9 +114,13 @@ namespace cosmos_management_generated
                 Resource = new CassandraTableResource
                 {
                     Id = tableName,
-                    DefaultTtl = -1, //-1 = off, 0 = on no default, >0 = ttl in seconds
+                    DefaultTtl = 0, //-1 = off, 0 = on no default, >0 = ttl in seconds
                     Schema =  new CassandraSchema
                     {
+                        PartitionKeys = new List<CassandraPartitionKey>
+                        {
+                            new CassandraPartitionKey { Name = "user_id" }
+                        },
                         Columns = new List<Column>
                         {
                             new Column { Name = "user_id", Type = "uuid" },
@@ -126,13 +129,8 @@ namespace cosmos_management_generated
                             new Column { Name = "body", Type = "text" },
                             new Column { Name = "posted_by", Type = "text" }
                         },
-                        PartitionKeys = new List<CassandraPartitionKey>
-                        {
-                            new CassandraPartitionKey { Name = partitionKey }
-                        },
                         ClusterKeys = new List<ClusterKey>
                         {
-                            new ClusterKey { Name = "user_id", OrderBy = "asc" },
                             new ClusterKey { Name = "posted_month", OrderBy = "asc" }
                         }
                     }
@@ -179,7 +177,7 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.GetCassandraTableThroughputAsync(resourceGroupName, accountName, keyspaceName, tableName);
             //Output throughput values
             Console.WriteLine("\nTable Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             int? ttl = properties.DefaultTtl.GetValueOrDefault();
             if (ttl == 0)
@@ -261,6 +259,7 @@ namespace cosmos_management_generated
                     DefaultTtl = cassandraTableGet.Resource.DefaultTtl,
                     Schema = cassandraTableGet.Resource.Schema
                 },
+                Options = new CreateUpdateOptions(),
                 Tags = cassandraTableGet.Tags
             };
 

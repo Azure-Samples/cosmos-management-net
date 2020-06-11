@@ -1,7 +1,5 @@
-﻿using Microsoft.Azure.Management.CosmosDB.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System;
+using Microsoft.Azure.Management.CosmosDB.Models;
 
 namespace cosmos_management_generated
 {
@@ -9,47 +7,42 @@ namespace cosmos_management_generated
     {
 
         static public CreateUpdateOptions Create (
-            int throughput, 
+            int? throughput, 
             bool? isAutoScale = false)
         {
 
             CreateUpdateOptions createUpdateOptions = new CreateUpdateOptions();
-            ProvisionedThroughputSettingsResource autoscaleThroughput;
 
-            if (isAutoScale.Value)
-            {
-                autoscaleThroughput = new ProvisionedThroughputSettingsResource { MaxThroughput = throughput };
-
-                createUpdateOptions.AdditionalProperties = new Dictionary<string, string>()
+            if(throughput.HasValue) //if null then return empty options
+            { 
+                if (isAutoScale.Value)
                 {
-                    { "ProvisionedThroughputSettings", autoscaleThroughput.ToString().Replace("\"", "\\\"") }
-                };
+                    createUpdateOptions.AutoscaleSettings =  new AutoscaleSettings { MaxThroughput = throughput };
+                }
+                else
+                {
+                    createUpdateOptions.Throughput = throughput;
+                }
             }
-            else
-            {
-                createUpdateOptions.Throughput = throughput.ToString();
-            }
-
             return createUpdateOptions;
         }
 
-        static public void Get(
+        static public void Print(
             ThroughputSettingsGetPropertiesResource resource)
         {
             try
             {
-                ProvisionedThroughputSettingsResource autoscale = resource.ProvisionedThroughputSettings;
-
-                if (autoscale == null)
+                if (resource.AutoscaleSettings == null)
                 {
                     Console.WriteLine($"Manual Provisioned Throughput: {resource.Throughput}");
                     Console.WriteLine($"Minimum Throughput: {resource.MinimumThroughput}");
-                    Console.WriteLine($"Offer Replace Pending: {resource.OfferReplacePending}");
                 }
                 else
                 {
-                    Console.WriteLine($"Max Autoscale Throughput: {autoscale.MaxThroughput}");
+                    Console.WriteLine($"Max Autoscale Throughput: {resource.AutoscaleSettings.MaxThroughput}");
+                    Console.WriteLine($"Target Max Autoscale Throughput: {resource.AutoscaleSettings.TargetMaxThroughput}");
                 }
+                Console.WriteLine($"Offer Replace Pending: {resource.OfferReplacePending}");
             }
             catch { }
         }
@@ -61,24 +54,31 @@ namespace cosmos_management_generated
         {
 
             ThroughputSettingsUpdateParameters throughputUpdate = new ThroughputSettingsUpdateParameters();
+            ThroughputSettingsResource throughputSettingsResource = new ThroughputSettingsResource();
 
             if (resource.OfferReplacePending == "true")
                 Console.WriteLine($"Throughput update in progress. This throughput replace will be applied after current one completes");
 
             if (!autoScale.GetValueOrDefault()) //manual throughput
-            { 
+            {
                 int minThroughput = Convert.ToInt32(resource.MinimumThroughput);
 
                 //Never set below min throughput or will generate exception
                 if (minThroughput > throughput)
                     throughput = minThroughput;
 
-                throughputUpdate.Resource.Throughput = throughput;
+                throughputSettingsResource.Throughput = throughput;
             }
             else //autoscale
             {
-                throughputUpdate.Resource.ProvisionedThroughputSettings.MaxThroughput = throughput;
+                throughputSettingsResource.AutoscaleSettings = new AutoscaleSettingsResource
+                {
+                    MaxThroughput = throughput
+                };
+                 
             }
+
+            throughputUpdate.Resource = throughputSettingsResource;
 
             return throughputUpdate;
         }

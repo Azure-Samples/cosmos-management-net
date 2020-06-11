@@ -14,10 +14,8 @@ namespace cosmos_management_generated
             string resourceGroupName, 
             string accountName, 
             string databaseName,
-            int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            int? throughput = null,
+            bool? autoScale = false)
         {
 
             MongoDBDatabaseCreateUpdateParameters mongoDBDatabaseCreateUpdateParameters = new MongoDBDatabaseCreateUpdateParameters
@@ -26,7 +24,7 @@ namespace cosmos_management_generated
                 {
                     Id = databaseName
                 },
-                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+                Options = Throughput.Create(throughput, autoScale)
             };
 
             return await cosmosClient.MongoDBResources.CreateUpdateMongoDBDatabaseAsync(resourceGroupName, accountName, databaseName, mongoDBDatabaseCreateUpdateParameters);
@@ -64,7 +62,7 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
             //Output throughput values
             Console.WriteLine("\nDatabase Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             Console.WriteLine("\n\n-----------------------\n\n");
 
@@ -77,16 +75,14 @@ namespace cosmos_management_generated
             string accountName, 
             string databaseName,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
 
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.MongoDBResources.UpdateMongoDBDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, throughputUpdate);
 
@@ -107,11 +103,8 @@ namespace cosmos_management_generated
             string accountName, 
             string databaseName, 
             string collectionName, 
-            string shardKey,
-            int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            int? throughput = null,
+            bool? autoScale = false)
         {
             MongoDBCollectionCreateUpdateParameters mongoDBCollectionCreateUpdateParameters = new MongoDBCollectionCreateUpdateParameters
             {
@@ -120,7 +113,7 @@ namespace cosmos_management_generated
                     Id = collectionName,
                     ShardKey = new Dictionary<string, string>()
                     {
-                        { shardKey, "Hash" }
+                        { "myShardKey", "Hash" }
                     },
                     Indexes = new List<MongoIndex>
                     {
@@ -130,6 +123,7 @@ namespace cosmos_management_generated
                              {
                                  Keys = new List<string>
                                  {
+                                     "myShardKey",
                                      "user_id",
                                      "user_address"
                                  }
@@ -148,9 +142,10 @@ namespace cosmos_management_generated
                             Options = new MongoIndexOptions { ExpireAfterSeconds = 604800 } //TTL of a week
                         }
                     }
-                    
                 },
-                Options = Throughput.Create(throughput, autoScale, autoUpgrade, incrementPercent)
+                //If throughput is null, return empty options for shared collection throughput
+                //unless database has no throughput, then defaults to 400 RU/s collection
+                Options = Throughput.Create(throughput, autoScale)
             };
 
             return await cosmosClient.MongoDBResources.CreateUpdateMongoDBCollectionAsync(resourceGroupName, accountName, databaseName, collectionName, mongoDBCollectionCreateUpdateParameters);
@@ -192,7 +187,7 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName);
             //Output throughput values
             Console.WriteLine("\nCollection Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             IDictionary<string, string> shardKeys = properties.ShardKey;
             if (shardKeys.Count > 0)
@@ -232,16 +227,14 @@ namespace cosmos_management_generated
             string databaseName, 
             string collectionName,
             int throughput,
-            bool? autoScale = false,
-            bool? autoUpgrade = false,
-            int? incrementPercent = null)
+            bool? autoScale = false)
         {
 
             try
             {
                 ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.GetMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName);
 
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale, autoUpgrade, incrementPercent);
+                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
 
                 await cosmosClient.MongoDBResources.UpdateMongoDBCollectionThroughputAsync(resourceGroupName, accountName, databaseName, collectionName, throughputUpdate);
 
@@ -275,6 +268,7 @@ namespace cosmos_management_generated
                     ShardKey = mongoDBCollectionGet.Resource.ShardKey,
                     Indexes = mongoDBCollectionGet.Resource.Indexes
                 },
+                Options = new CreateUpdateOptions(),
                 Tags = mongoDBCollectionGet.Tags
             };
 
@@ -287,6 +281,5 @@ namespace cosmos_management_generated
 
             return await cosmosClient.MongoDBResources.CreateUpdateMongoDBCollectionAsync(resourceGroupName, accountName, databaseName, collectionName, mongoDBCollectionCreateUpdateParameters);
         }
-
     }
 }
