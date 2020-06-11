@@ -14,7 +14,7 @@ namespace cosmos_management_generated
             string resourceGroupName, 
             string accountName, 
             string databaseName,
-            int throughput,
+            int? throughput = null,
             bool? autoScale = false)
         {
 
@@ -24,6 +24,7 @@ namespace cosmos_management_generated
                 {
                     Id = databaseName
                 },
+                //if throughput is null, return empty options, dedicated graph throughput
                 Options = Throughput.Create(throughput, autoScale)
             };
 
@@ -62,14 +63,14 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
             //Output throughput values
             Console.WriteLine("\nDatabase Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             Console.WriteLine("\n\n-----------------------\n\n");
 
             return gremlinDatabase;
         }
 
-        public async Task<int> UpdateDatabaseThroughputAsync(
+        public async Task UpdateDatabaseThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
@@ -86,13 +87,11 @@ namespace cosmos_management_generated
 
                 await cosmosClient.GremlinResources.UpdateGremlinDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, throughputUpdate);
 
-                return throughput;
             }
             catch
             {
                 Console.WriteLine("Database throughput not set\nPress any key to continue");
                 Console.ReadKey();
-                return 0;
             }
         }
 
@@ -101,9 +100,8 @@ namespace cosmos_management_generated
             string resourceGroupName, 
             string accountName, 
             string databaseName, 
-            string graphName, 
-            string partitionKey,
-            int throughput,
+            string graphName,
+            int? throughput = null,
             bool? autoScale = false)
         {
             GremlinGraphCreateUpdateParameters gremlinGraphCreateUpdateParameters = new GremlinGraphCreateUpdateParameters
@@ -115,7 +113,7 @@ namespace cosmos_management_generated
                     PartitionKey = new ContainerPartitionKey
                     {
                         Kind = "Hash",
-                        Paths = new List<string> { partitionKey },
+                        Paths = new List<string> { "/myPartitionKey" },
                         Version = 1 //version 2 for large partition key
                     },
                     IndexingPolicy = new IndexingPolicy
@@ -129,19 +127,6 @@ namespace cosmos_management_generated
                         ExcludedPaths = new List<ExcludedPath>
                         {
                             new ExcludedPath { Path = "/myPathToNotIndex/*"}
-                        },
-                        CompositeIndexes = new List<IList<CompositePath>>
-                        {
-                            new List<CompositePath>
-                            {
-                                new CompositePath { Path = "/myOrderByPath1", Order = CompositePathSortOrder.Ascending },
-                                new CompositePath { Path = "/myOrderByPath2", Order = CompositePathSortOrder.Descending }
-                            },
-                            new List<CompositePath>
-                            {
-                                new CompositePath { Path = "/myOrderByPath3", Order = CompositePathSortOrder.Ascending },
-                                new CompositePath { Path = "/myOrderByPath4", Order = CompositePathSortOrder.Descending }
-                            }
                         }
                     }
                 },
@@ -187,7 +172,7 @@ namespace cosmos_management_generated
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.GremlinResources.GetGremlinGraphThroughputAsync(resourceGroupName, accountName, databaseName, graphName);
             //Output throughput values
             Console.WriteLine("\nGraph Throughput\n-----------------------");
-            Throughput.Get(throughputSettingsGetResults.Resource);
+            Throughput.Print(throughputSettingsGetResults.Resource);
 
             int? ttl = properties.DefaultTtl.GetValueOrDefault();
             if (ttl == 0)
@@ -215,7 +200,7 @@ namespace cosmos_management_generated
             Console.WriteLine($"Indexing Mode: {indexingPolicy.IndexingMode}");
             Console.WriteLine($"Automatic: {indexingPolicy.Automatic.Value.ToString()}");
 
-            if (indexingPolicy.IncludedPaths.Count > 0)
+            if (indexingPolicy.IncludedPaths != null)
             {
                 Console.WriteLine("\tIncluded Paths\n\t-----------------------");
                 foreach (IncludedPath path in indexingPolicy.IncludedPaths)
@@ -225,7 +210,7 @@ namespace cosmos_management_generated
                 Console.WriteLine("\n\t-----------------------");
             }
 
-            if (indexingPolicy.ExcludedPaths.Count > 0)
+            if (indexingPolicy.ExcludedPaths != null)
             {
                 Console.WriteLine("\tExcluded Paths\n\t-----------------------");
                 foreach (ExcludedPath path in indexingPolicy.ExcludedPaths)
@@ -235,53 +220,11 @@ namespace cosmos_management_generated
                 Console.WriteLine("\n\t-----------------------");
             }
 
-            if (indexingPolicy.SpatialIndexes.Count > 0)
-            {
-                Console.WriteLine("\tSpatial Indexes\n\t-----------------------");
-                foreach (SpatialSpec spec in indexingPolicy.SpatialIndexes)
-                {
-                    Console.WriteLine($"\tPath: {spec.Path}");
-                    Console.WriteLine("\t\tSpatial Types\n\t\t-----------------------");
-                    foreach (string type in spec.Types)
-                    {
-                        Console.WriteLine($"\t\tType: {type}");
-                    }
-                }
-                Console.WriteLine("\n\t-----------------------");
-            }
-
-            if (indexingPolicy.CompositeIndexes.Count > 0)
-            {
-                Console.WriteLine("\tComposite Indexes\n\t-----------------------");
-
-                int iIndex = 1;
-                foreach (List<CompositePath> compositePaths in indexingPolicy.CompositeIndexes)
-                {
-                    Console.WriteLine($"\tComposite Index #:{iIndex}");
-                    foreach (CompositePath compositePath in compositePaths)
-                    {
-                        Console.WriteLine($"\tPath: {compositePath.Path}, Order: {compositePath.Order}");
-                    }
-                    Console.WriteLine("\t-----------------------");
-                    iIndex++;
-                    if (compositePaths.Count > iIndex)
-                        Console.WriteLine("\t-----------------------");
-                }
-            }
-
             if (cosmosClient.DatabaseAccounts.GetAsync(resourceGroupName, accountName).Result.EnableMultipleWriteLocations.GetValueOrDefault())
             {   //Use some logic here to distinguish "custom" merge using stored procedure versus just writing to the conflict feed "none".
                 if (properties.ConflictResolutionPolicy.Mode == "Custom")
                 {
-                    if (properties.ConflictResolutionPolicy.ConflictResolutionProcedure.Length == 0)
-                    {
-                        Console.WriteLine("Conflict Resolution Mode: Conflict Feed");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Conflict Resolution Mode: Custom Merge Procedure");
-                        Console.WriteLine($"Conflict Resolution Stored Procedure: {properties.ConflictResolutionPolicy.ConflictResolutionProcedure}");
-                    }
+                    Console.WriteLine("Conflict Resolution Mode: Asynchronous via Conflict Feed");
                 }
                 else
                 {   //Last Writer Wins
@@ -294,7 +237,7 @@ namespace cosmos_management_generated
             return gremlinGraph;
         }
 
-        public async Task<int> UpdateGraphThroughputAsync(
+        public async Task UpdateGraphThroughputAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
@@ -312,13 +255,11 @@ namespace cosmos_management_generated
 
                 await cosmosClient.GremlinResources.UpdateGremlinGraphThroughputAsync(resourceGroupName, accountName, databaseName, graphName, throughputUpdate);
 
-                return throughput;
             }
             catch
             {
                 Console.WriteLine("Graph throughput not set\nPress any key to continue");
                 Console.ReadKey();
-                return 0;
             }
         }
 
@@ -344,6 +285,7 @@ namespace cosmos_management_generated
                     DefaultTtl = gremlinGraphGet.Resource.DefaultTtl,
                     IndexingPolicy = gremlinGraphGet.Resource.IndexingPolicy
                 },
+                Options = new CreateUpdateOptions(),
                 Tags = gremlinGraphGet.Tags
             };
 
