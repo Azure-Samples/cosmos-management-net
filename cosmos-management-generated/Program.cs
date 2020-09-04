@@ -89,18 +89,22 @@ namespace cosmos_management_generated
         static CosmosDBManagementClient CreateCosmosClient(ServiceClientCredentials credentials, string subscriptionId)
         {
 
-            CosmosDBManagementClient cosmosClient = new CosmosDBManagementClient(credentials);
-            cosmosClient.SubscriptionId = subscriptionId;
+            CosmosDBManagementClient cosmosClient = new CosmosDBManagementClient(credentials)
+            {
+                SubscriptionId = subscriptionId
+            };
 
             return cosmosClient;
 
         }
 
         static async Task<string> CreateResourceGroupAsync(ServiceClientCredentials credentials, string subscriptionId, string location)
-        {            
-            
-            ResourceManagementClient resourceManagementClient = new ResourceManagementClient(credentials);
-            resourceManagementClient.SubscriptionId = subscriptionId;
+        {
+
+            ResourceManagementClient resourceManagementClient = new ResourceManagementClient(credentials)
+            {
+                SubscriptionId = subscriptionId
+            };
 
             string resourceGroupName = RandomResourceName("cosmos-");
 
@@ -172,8 +176,8 @@ namespace cosmos_management_generated
             await sql.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, database1Name);
             await sql.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, newThroughput); //update standard throughput
             await sql.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, newAutoscaleMaxThroughput, autoScale: true); //update autoscale throughput
-            //await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoscaleMaxThroughput, autoScale: true); //migrate manual to autoscale
-            //await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, throughput, autoScale: false); //migrate autoscale to manual
+            await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: true); //migrate manual to autoscale
+            await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: false); //migrate autoscale to manual
 
             //Container (dedicated throughput)
             await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database3Name);
@@ -183,8 +187,8 @@ namespace cosmos_management_generated
             await sql.GetContainerAsync(cosmosClient, resourceGroupName, accountName, database3Name, container2Name);
             await sql.UpdateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, newThroughput); //update standard throughput
             await sql.UpdateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container2Name, newAutoscaleMaxThroughput, autoScale: true); //update autoscale throughput
-            //await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, autoscaleMaxThroughput, autScale: true); //migrate manual to autoscale
-            //await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, autoscaleMaxThroughput, autoScale: false); //migrate autoscale to manual
+            await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, autoScale: true); //migrate manual to autoscale
+            await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, autoScale: false); //migrate autoscale to manual
             await sql.UpdateContainerAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, defaultTtl: updatedTtl);
 
             //Server-Side
@@ -220,6 +224,8 @@ namespace cosmos_management_generated
             await gremlin.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name);
             await gremlin.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, newThroughput);//standard throughput
             await gremlin.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
+            await gremlin.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: true); //migrate standard to autoscale
+            await gremlin.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: false); //migrate autoscale to standard
 
             //Graph (dedicated throughput)
             await gremlin.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database3Name);//dedicated database
@@ -229,6 +235,8 @@ namespace cosmos_management_generated
             await gremlin.GetGraphAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph2Name);
             await gremlin.UpdateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, newThroughput);//standard throughput
             await gremlin.UpdateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
+            await gremlin.MigrateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, autoScale: true); //migrate standard to autoscale
+            await gremlin.MigrateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, autoScale: false); //migrate autoscale to standard
             await gremlin.UpdateGraphAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, defaultTtl: updatedTtl);
 
         }
@@ -259,6 +267,8 @@ namespace cosmos_management_generated
             await mongoDB.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name);
             await mongoDB.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, newThroughput);//standard throughput
             await mongoDB.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
+            await mongoDB.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: true); //migrate standard to autoscale
+            await mongoDB.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: false); //migrate autoscale to standard
 
             //Collection (dedicated throughput)
             await mongoDB.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database3Name);//dedicated collection throughput
@@ -268,6 +278,8 @@ namespace cosmos_management_generated
             await mongoDB.GetCollectionAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection2Name);
             await mongoDB.UpdateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name, newThroughput);//standard throughput
             await mongoDB.UpdateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
+            await mongoDB.MigrateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name, autoScale: true); //migrate standard to autoscale
+            await mongoDB.MigrateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name, autoScale: false); //migrate autoscale to standard
             await mongoDB.UpdateCollectionAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name);
 
         }
@@ -299,6 +311,8 @@ namespace cosmos_management_generated
             await cassandra.GetKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspace2Name);
             await cassandra.UpdateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace1Name, newThroughput);//standard throughput
             await cassandra.UpdateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
+            await cassandra.MigrateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace1Name, autoScale: true); //migrate standard to autoscale
+            await cassandra.MigrateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace1Name, autoScale: false); //migrate autoscale to standard
 
             //Table (dedicated throughput)
             await cassandra.CreateKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name);//dedicated keyspace
@@ -308,6 +322,8 @@ namespace cosmos_management_generated
             await cassandra.GetTableAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table2Name);
             await cassandra.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, newThroughput);//standard throughput
             await cassandra.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
+            await cassandra.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, autoScale: true); //migrate standard to autoscale
+            await cassandra.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, autoScale: false); //migrate autoscale to standard
             await cassandra.UpdateTableAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, defaultTtl: updatedTtl);
 
         }
@@ -335,6 +351,8 @@ namespace cosmos_management_generated
             await table.GetTableAsync(cosmosClient, resourceGroupName, accountName, table2Name);
             await table.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table1Name, newThroughput);//standard throughput
             await table.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table2Name, newAutoscaleMaxThroughput, autoScale: true);//standard throughput
+            await table.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table1Name, autoScale: true); //migrate standard to autoscale
+            await table.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table1Name, autoScale: false); //migrate autoscale to standard
             await table.UpdateTableAsync(cosmosClient, resourceGroupName, accountName, table1Name);
 
         }

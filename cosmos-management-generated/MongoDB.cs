@@ -8,7 +8,7 @@ namespace cosmos_management_generated
 {
     class MongoDB
     {
-
+#pragma warning disable CS8632
         public async Task<MongoDBDatabaseGetResults> CreateDatabaseAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
@@ -94,6 +94,33 @@ namespace cosmos_management_generated
                 Console.WriteLine("Database throughput not set\nPress any key to continue");
                 Console.ReadKey();
                 return 0;
+            }
+        }
+
+        public async Task MigrateDatabaseThroughputAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName,
+            bool? autoScale = false)
+        {
+            try
+            {
+                if (autoScale.Value)
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.MigrateMongoDBDatabaseToAutoscaleAsync(resourceGroupName, accountName, databaseName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+                else
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.MigrateMongoDBDatabaseToManualThroughputAsync(resourceGroupName, accountName, databaseName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Database throughput not set\nPress any key to continue");
+                Console.ReadKey();
             }
         }
 
@@ -245,6 +272,34 @@ namespace cosmos_management_generated
                 Console.WriteLine("Collection throughput not set\nPress any key to continue");
                 Console.ReadKey();
                 return 0;
+            }
+        }
+
+        public async Task MigrateCollectionThroughputAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string databaseName,
+            string collectionName,
+            bool? autoScale = false)
+        {
+            try
+            {
+                if (autoScale.Value)
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.BeginMigrateMongoDBCollectionToAutoscaleAsync(resourceGroupName, accountName, databaseName, collectionName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+                else
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.BeginMigrateMongoDBCollectionToManualThroughputAsync(resourceGroupName, accountName, databaseName, collectionName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Collection throughput not set\nPress any key to continue");
+                Console.ReadKey();
             }
         }
 

@@ -6,9 +6,9 @@ using Microsoft.Azure.Management.CosmosDB.Models;
 
 namespace cosmos_management_generated
 {
+#pragma warning disable CS8632
     public class Sql
     {
-
         public async Task<SqlDatabaseGetResults> CreateDatabaseAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
@@ -98,12 +98,27 @@ namespace cosmos_management_generated
             string resourceGroupName,
             string accountName,
             string databaseName,
-            int throughput,
             bool? autoScale = false)
+        {
+            try
             {
-                throw new Exception("Not implemented");
-
+                if(autoScale.Value)
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.MigrateSqlDatabaseToAutoscaleAsync(resourceGroupName, accountName, databaseName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+                else
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.MigrateSqlDatabaseToManualThroughputAsync(resourceGroupName, accountName, databaseName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
             }
+            catch
+            {
+                Console.WriteLine("Database throughput not set\nPress any key to continue");
+                Console.ReadKey();
+            }
+        }
 
         public async Task<SqlContainerGetResults> CreateContainerAsync(
             CosmosDBManagementClient cosmosClient, 
@@ -249,7 +264,7 @@ namespace cosmos_management_generated
             IndexingPolicy indexingPolicy = properties.IndexingPolicy;
             Console.WriteLine("\nIndexing Policy\n-----------------------");
             Console.WriteLine($"Indexing Mode: {indexingPolicy.IndexingMode}");
-            Console.WriteLine($"Automatic: {indexingPolicy.Automatic.Value.ToString()}");
+            Console.WriteLine($"Automatic: {indexingPolicy.Automatic.Value}");
 
             if (indexingPolicy.IncludedPaths != null)
             {
@@ -379,13 +394,27 @@ namespace cosmos_management_generated
             string accountName,
             string databaseName,
             string containerName,
-            int throughput,
             bool? autoScale = false)
+        {
+            try
             {
-
-                throw new Exception("Not implemented");
-            
+                if (autoScale.Value)
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.MigrateSqlContainerToAutoscaleAsync(resourceGroupName, accountName, databaseName, containerName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+                else
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.MigrateSqlContainerToManualThroughputAsync(resourceGroupName, accountName, databaseName, containerName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
             }
+            catch
+            {
+                Console.WriteLine("Container throughput not set\nPress any key to continue");
+                Console.ReadKey();
+            }
+        }
 
         public async Task<SqlContainerGetResults> UpdateContainerAsync(
             CosmosDBManagementClient cosmosClient, 

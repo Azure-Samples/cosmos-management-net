@@ -8,11 +8,11 @@ namespace cosmos_management_generated
 {
     class Cassandra
     {
-
+#pragma warning disable CS8632
         public async Task<CassandraKeyspaceGetResults> CreateKeyspaceAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
             string keyspaceName,
             int? throughput = null,
             bool? autoScale = false)
@@ -59,22 +59,22 @@ namespace cosmos_management_generated
             Console.WriteLine($"Azure Resource Id: {cassandraKeyspace.Id}");
             Console.WriteLine($"Keyspace Name: {cassandraKeyspace.Resource.Id}");
 
-            
+
             ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.GetCassandraKeyspaceThroughputAsync(resourceGroupName, accountName, keyspaceName);
 
             //Output throughput values
             Console.WriteLine("\nKeyspace Throughput\n-----------------------");
             Throughput.Print(throughputSettingsGetResults.Resource);
-            
+
             Console.WriteLine("\n\n-----------------------\n\n");
 
             return cassandraKeyspace;
         }
 
         public async Task<int> UpdateKeyspaceThroughputAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
             string keyspaceName,
             int throughput,
             bool? autoScale = false)
@@ -99,12 +99,39 @@ namespace cosmos_management_generated
             }
         }
 
+        public async Task MigrateKeyspaceThroughputAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string keyspaceName,
+            bool? autoScale = false)
+        {
+            try
+            {
+                if (autoScale.Value)
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.MigrateCassandraKeyspaceToAutoscaleAsync(resourceGroupName, accountName, keyspaceName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+                else
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.MigrateCassandraKeyspaceToManualThroughputAsync(resourceGroupName, accountName, keyspaceName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Keyspace throughput not set\nPress any key to continue");
+                Console.ReadKey();
+            }
+        }
+
         public async Task<CassandraTableGetResults> CreateTableAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string keyspaceName, 
-            string tableName, 
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string keyspaceName,
+            string tableName,
             int? throughput = null,
             bool? autoScale = false)
         {
@@ -115,7 +142,7 @@ namespace cosmos_management_generated
                 {
                     Id = tableName,
                     DefaultTtl = 0, //-1 = off, 0 = on no default, >0 = ttl in seconds
-                    Schema =  new CassandraSchema
+                    Schema = new CassandraSchema
                     {
                         PartitionKeys = new List<CassandraPartitionKey>
                         {
@@ -211,10 +238,10 @@ namespace cosmos_management_generated
         }
 
         public async Task<int> UpdateTableThroughputAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string keyspaceName, 
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string keyspaceName,
             string tableName,
             int throughput,
             bool? autoScale = false)
@@ -236,6 +263,35 @@ namespace cosmos_management_generated
                 Console.ReadKey();
                 return 0;
             }
+        }
+
+        public async Task MigrateTableThroughputAsync(
+            CosmosDBManagementClient cosmosClient,
+            string resourceGroupName,
+            string accountName,
+            string keyspaceName,
+            string tableName,
+            bool? autoScale = false)
+        {
+            try
+            {
+                if (autoScale.Value)
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.MigrateCassandraTableToAutoscaleAsync(resourceGroupName, accountName, keyspaceName, tableName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+                else
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.MigrateCassandraTableToManualThroughputAsync(resourceGroupName, accountName, keyspaceName, tableName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Table throughput not set\nPress any key to continue");
+                Console.ReadKey();
+            }
+                
         }
 
         public async Task<CassandraTableGetResults> UpdateTableAsync(
