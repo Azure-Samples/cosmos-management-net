@@ -9,7 +9,7 @@ namespace cosmos_management_generated
 {
     class Table
     {
-
+#pragma warning disable CS8632
         public async Task<TableGetResults> CreateTableAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
@@ -97,6 +97,34 @@ namespace cosmos_management_generated
             }
         }
 
+        public async Task MigrateTableThroughputAsync(
+             CosmosDBManagementClient cosmosClient,
+             string resourceGroupName,
+             string accountName,
+             string tableName,
+             bool? autoScale = false)
+        {
+            try
+            {
+                if (autoScale.Value)
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.MigrateTableToAutoscaleAsync(resourceGroupName, accountName, tableName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+                else
+                {
+                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.MigrateTableToManualThroughputAsync(resourceGroupName, accountName, tableName);
+                    Throughput.Print(throughputSettingsGetResults.Resource);
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Table throughput not set\nPress any key to continue");
+                Console.ReadKey();
+            }
+
+        }
+        
         public async Task<TableGetResults> UpdateTableAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 

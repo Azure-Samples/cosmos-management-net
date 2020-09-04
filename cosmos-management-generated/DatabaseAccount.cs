@@ -39,7 +39,17 @@ namespace cosmos_management_generated
 					DefaultConsistencyLevel = DefaultConsistencyLevel.Session 
 				},
 				EnableAutomaticFailover = true,
-				DisableKeyBasedMetadataWriteAccess = false  //setting this to true blocks SDK clients using access keys from changing any control plane resources
+				DisableKeyBasedMetadataWriteAccess = false,  //setting this to true blocks SDK clients from changing any control plane resources
+				EnableAnalyticalStorage = false,
+				PublicNetworkAccess = "enabled",
+				EnableFreeTier = false,
+				EnableMultipleWriteLocations = false,
+				KeyVaultKeyUri = string.Empty,
+				IpRules = new List<IpAddressOrRange>() { },
+				VirtualNetworkRules = new List<VirtualNetworkRule>() { },
+				Cors = new List<CorsPolicy>() { },
+				IsVirtualNetworkFilterEnabled = false,
+				Tags = new Dictionary<string, string>() { }
 			};
 
 			SetApi(createUpdateParameters, apiType);

@@ -170,18 +170,5 @@ namespace cosmos_management_fluent
             return throughput;
 
         }
-
-        public async Task UpdateCollectionAsync(
-            IAzure azure, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName, 
-            string collectionName)
-        {
-            //await azure.CosmosDBAccounts.GetByResourceGroup(resourceGroupName, accountName).Update()
-            //    .UpdateMongoDB(databaseName)
-            //        .UpdateCollection(collectionName)
-
-        }
     }
 }
