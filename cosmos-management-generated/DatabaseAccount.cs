@@ -25,7 +25,7 @@ namespace cosmos_management_generated
 			string accountName, 
 			Api apiType)
 		{
-
+			
 			DatabaseAccountCreateUpdateParameters createUpdateParameters = new DatabaseAccountCreateUpdateParameters
 			{
 				Location = resourceLocation, //region where account will be created
@@ -277,7 +277,7 @@ namespace cosmos_management_generated
 					break;
 				case Api.MongoDB:
 					createUpdateParameters.Kind = "MongoDB";
-					ApiProperties apiProperties = new ApiProperties { ServerVersion = "3.6" };
+					ApiProperties apiProperties = new ApiProperties { ServerVersion = "4.0" };
 					createUpdateParameters.ApiProperties = apiProperties;
 					break;
 				case Api.Cassandra:

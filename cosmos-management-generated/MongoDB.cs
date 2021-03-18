@@ -146,6 +146,16 @@ namespace cosmos_management_generated
                     {
                         new MongoIndex
                         {
+                            Key = new MongoIndexKeys
+                            {
+                                Keys = new List<string>
+                                {
+                                    "_id" //required for MongoDB 4.0+
+                                }
+                            }
+                        },
+                        new MongoIndex
+                        {
                              Key = new MongoIndexKeys
                              {
                                  Keys = new List<string>

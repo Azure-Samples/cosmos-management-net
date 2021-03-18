@@ -136,6 +136,7 @@ namespace cosmos_management_generated
                 {
                     Id = containerName,
                     DefaultTtl = -1, //-1 = off, 0 = on no default, >0 = ttl in seconds
+                    AnalyticalStorageTtl = -1,
                     PartitionKey = new ContainerPartitionKey
                     {
                         Kind = "Hash",

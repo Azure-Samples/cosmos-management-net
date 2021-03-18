@@ -27,13 +27,18 @@ namespace cosmos_management_generated
             try
             {
                 //=================================================================
-                // Authenticate
-                IConfigurationBuilder builder = new ConfigurationBuilder().AddJsonFile("appsettings.json");
+                //Load secrets
+                IConfigurationBuilder builder = new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                    .AddUserSecrets<Secrets>();
+
                 IConfigurationRoot config = builder.Build();
-                string tenantId = config["tenantId"];
-                string clientId = config["clientId"];
-                string clientSecret = config["clientSecret"];
-                string subscriptionId = config["subscriptionId"];
+
+                string tenantId = config.GetSection("TenantId").Value;
+                string clientId = config.GetSection("ClientId").Value;
+                string clientSecret = config.GetSection("ClientSecret").Value;
+                string subscriptionId = config.GetSection("SubscriptionId").Value;
 
                 //Authenticate
                 ServiceClientCredentials credentials = await AuthenticateAsync(clientId, clientSecret, tenantId);
@@ -57,7 +62,7 @@ namespace cosmos_management_generated
 
                 Console.WriteLine("Cosmos DB MongoDB API Resources: Press any key to continue");
                 Console.ReadKey();
-                await MongoDB(cosmosClient, resourceGroupName, location);
+                //await MongoDB(cosmosClient, resourceGroupName, location);
 
                 Console.WriteLine("Cosmos DB Cassandra API Resources: Press any key to continue");
                 Console.ReadKey();
@@ -356,5 +361,14 @@ namespace cosmos_management_generated
             await table.UpdateTableAsync(cosmosClient, resourceGroupName, accountName, table1Name);
 
         }
+    }
+
+    class Secrets
+    {
+        public string ClientId { get; set; }
+        public string TenantId { get; set; }
+        public string ClientSecret { get; set; }
+        public string SubscriptionId { get; set; }
+
     }
 }

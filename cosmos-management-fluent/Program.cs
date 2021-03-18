@@ -6,6 +6,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Azure.Management.Network.Fluent;
+using System.IO;
 
 namespace cosmos_management_fluent
 {
@@ -21,14 +22,20 @@ namespace cosmos_management_fluent
         static async Task Run()
         {
             //=================================================================
-            // Authenticate
-            IConfigurationBuilder builder = new ConfigurationBuilder().AddJsonFile("appsettings.json");
-            IConfigurationRoot config = builder.Build();
-            string tenantId = config["tenantId"];
-            string clientId = config["clientId"];
-            string clientSecret = config["clientSecret"];
-            string subscriptionId = config["subscriptionId"];
+            //Load secrets
+            IConfigurationBuilder builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddUserSecrets<Secrets>();
 
+            IConfigurationRoot config = builder.Build();
+
+            string tenantId = config.GetSection("TenantId").Value;
+            string clientId = config.GetSection("ClientId").Value;
+            string clientSecret = config.GetSection("ClientSecret").Value;
+            string subscriptionId = config.GetSection("SubscriptionId").Value;
+
+            //Authenticate
             AzureCredentials credentials = SdkContext.AzureCredentialsFactory.FromServicePrincipal(clientId, clientSecret, tenantId, AzureEnvironment.AzureGlobalCloud);
 
             var azure = Azure
@@ -128,7 +135,7 @@ namespace cosmos_management_fluent
             
             await mongoDB.CreateCollectionAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
             await mongoDB.UpdateCollectionThroughputAsync(azure, resourceGroupName, accountName, databaseName, collectionName, 500);
-            await mongoDB.UpdateCollectionAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
+            //await mongoDB.UpdateCollectionAsync(azure, resourceGroupName, accountName, databaseName, collectionName);
         }
 
         static async Task Cassandra(IAzure azure, string resourceGroupName)
@@ -171,6 +178,15 @@ namespace cosmos_management_fluent
             await table.UpdateTableThroughputAsync(azure, resourceGroupName, accountName, tableName, 500);
 
         }
+
+    }
+
+    class Secrets
+    {
+        public string ClientId { get; set; }
+        public string TenantId { get; set; }
+        public string ClientSecret { get; set; }
+        public string SubscriptionId { get; set; }
 
     }
 }
