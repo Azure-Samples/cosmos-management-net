@@ -8,7 +8,6 @@ namespace cosmos_management_generated
 {
     class MongoDB
     {
-#pragma warning disable CS8632
         public async Task<MongoDBDatabaseGetResults> CreateDatabaseAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
@@ -23,9 +22,14 @@ namespace cosmos_management_generated
                 Resource = new MongoDBDatabaseResource
                 {
                     Id = databaseName
-                },
-                Options = Throughput.Create(throughput, autoScale)
+                }
             };
+
+            if (throughput != null)
+            {
+                //Create database with shared throughput
+                mongoDBDatabaseCreateUpdateParameters.Options = Throughput.Create(Convert.ToInt32(throughput), Convert.ToBoolean(autoScale));
+            }
 
             return await cosmosClient.MongoDBResources.CreateUpdateMongoDBDatabaseAsync(resourceGroupName, accountName, databaseName, mongoDBDatabaseCreateUpdateParameters);
         }
@@ -75,7 +79,7 @@ namespace cosmos_management_generated
             string accountName, 
             string databaseName,
             int throughput,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
 
             try
@@ -102,11 +106,11 @@ namespace cosmos_management_generated
             string resourceGroupName,
             string accountName,
             string databaseName,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
             try
             {
-                if (autoScale.Value)
+                if (autoScale)
                 {
                     ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.MigrateMongoDBDatabaseToAutoscaleAsync(resourceGroupName, accountName, databaseName);
                     Throughput.Print(throughputSettingsGetResults.Resource);
@@ -146,6 +150,16 @@ namespace cosmos_management_generated
                     {
                         new MongoIndex
                         {
+                            Key = new MongoIndexKeys
+                            {
+                                Keys = new List<string>
+                                {
+                                    "_id" //required for MongoDB 4.0+
+                                }
+                            }
+                        },
+                        new MongoIndex
+                        {
                              Key = new MongoIndexKeys
                              {
                                  Keys = new List<string>
@@ -169,11 +183,14 @@ namespace cosmos_management_generated
                             Options = new MongoIndexOptions { ExpireAfterSeconds = 604800 } //TTL of a week
                         }
                     }
-                },
-                //If throughput is null, return empty options for shared collection throughput
-                //unless database has no throughput, then defaults to 400 RU/s collection
-                Options = Throughput.Create(throughput, autoScale)
+                }
             };
+
+            if (throughput != null)
+            {
+                //Create collection with dedicated throughput
+                mongoDBCollectionCreateUpdateParameters.Options = Throughput.Create(Convert.ToInt32(throughput), Convert.ToBoolean(autoScale));
+            }
 
             return await cosmosClient.MongoDBResources.CreateUpdateMongoDBCollectionAsync(resourceGroupName, accountName, databaseName, collectionName, mongoDBCollectionCreateUpdateParameters);
         }
@@ -254,7 +271,7 @@ namespace cosmos_management_generated
             string databaseName, 
             string collectionName,
             int throughput,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
 
             try
@@ -281,11 +298,11 @@ namespace cosmos_management_generated
             string accountName,
             string databaseName,
             string collectionName,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
             try
             {
-                if (autoScale.Value)
+                if (autoScale)
                 {
                     ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.MongoDBResources.BeginMigrateMongoDBCollectionToAutoscaleAsync(resourceGroupName, accountName, databaseName, collectionName);
                     Throughput.Print(throughputSettingsGetResults.Resource);

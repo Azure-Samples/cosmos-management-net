@@ -7,70 +7,120 @@ using Microsoft.Rest.Azure.Authentication;
 using Microsoft.Azure.Management.CosmosDB;
 using Microsoft.Azure.Management.ResourceManager;
 using Microsoft.Azure.Management.ResourceManager.Models;
+using System.Collections.Generic;
+using Microsoft.Azure.Management.CosmosDB.Models;
+using System.Collections.Concurrent;
+using System.ComponentModel.Design;
 
 namespace cosmos_management_generated
 {
     class Program
     {
-        
+        #pragma warning disable CS8618  //Suppress non-nullable fields below
+
+        private static IConfigurationRoot _config;
+        private static string _subscriptionId;
+        private static ServiceClientCredentials _credentials;
+        private static string _location;
+        private static string _resourceGroupName;
+        private static CosmosDBManagementClient _cosmosClient;
 
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Azure Cosmos DB Management API Samples");
+            //=================================================================
+            //Load secrets
+            IConfigurationBuilder builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddUserSecrets<Secrets>();
 
-            await Run();
+            _config = builder.Build();
+
+            await MainMenu();
 
         }
 
-        static async Task Run()
+        static async Task MainMenu()
         {
             try
             {
-                //=================================================================
-                // Authenticate
-                IConfigurationBuilder builder = new ConfigurationBuilder().AddJsonFile("appsettings.json");
-                IConfigurationRoot config = builder.Build();
-                string tenantId = config["tenantId"];
-                string clientId = config["clientId"];
-                string clientSecret = config["clientSecret"];
-                string subscriptionId = config["subscriptionId"];
+                bool exit = false;
 
-                //Authenticate
-                ServiceClientCredentials credentials = await AuthenticateAsync(clientId, clientSecret, tenantId);
+                while (exit == false)
+                {
+                    Console.Clear();
+                    Console.WriteLine($"Azure Cosmos DB Management API Samples");
+                    Console.WriteLine($"--------------------------------------");
+                    Console.WriteLine($"[a]   Authenticate");
+                    Console.WriteLine($"[b]   Create Cosmos Management Client");
+                    Console.WriteLine($"[c]   Set Region for ARM account resource");
+                    Console.WriteLine($"[d]   Set or Create a Resource Group");
+                    Console.WriteLine($"--------------------------------------");
+                    Console.WriteLine($"[e]   Database Account Operations");
+                    Console.WriteLine($"[f]   Cassandra API Operations");
+                    Console.WriteLine($"[g]   Gremlin API Operations");
+                    Console.WriteLine($"[h]   MongoDB API Operations");
+                    Console.WriteLine($"[i]   NoSQL API Operations");
+                    Console.WriteLine($"[j]   Table API Operations");
+                    Console.WriteLine($"[x]   Exit");
 
-                string location = "West US 2";
+                    ConsoleKeyInfo result = Console.ReadKey(true);
 
-                //=================================================================
-                // Create Resource Group
-                string resourceGroupName = await CreateResourceGroupAsync(credentials, subscriptionId, location);
-
-                //Cosmos Management Client
-                CosmosDBManagementClient cosmosClient = CreateCosmosClient(credentials, subscriptionId);
-
-                Console.WriteLine("Cosmos Database Account: Press any key to continue");
-                Console.ReadKey();
-                await Account(cosmosClient, resourceGroupName, location);
-
-                Console.WriteLine("Cosmos DB Core(Sql) Resources: Press any key to continue");
-                Console.ReadKey();
-                await Sql(cosmosClient, resourceGroupName, location);
-
-                Console.WriteLine("Cosmos DB MongoDB API Resources: Press any key to continue");
-                Console.ReadKey();
-                await MongoDB(cosmosClient, resourceGroupName, location);
-
-                Console.WriteLine("Cosmos DB Cassandra API Resources: Press any key to continue");
-                Console.ReadKey();
-                await Cassandra(cosmosClient, resourceGroupName, location);
-
-                Console.WriteLine("Cosmos DB Gremlin API Resources: Press any key to continue");
-                Console.ReadKey();
-                await Gremlin(cosmosClient, resourceGroupName, location);
-
-                Console.WriteLine("Cosmos DB Table API Resources: Press any key to continue");
-                Console.ReadKey();
-                await Table(cosmosClient, resourceGroupName, location);
-
+                    if (result.KeyChar == 'a')
+                    {
+                        Console.Clear();
+                        await AuthenticateAsync();
+                    }
+                    else if (result.KeyChar == 'b')
+                    {
+                        Console.Clear();
+                        _cosmosClient = CreateCosmosClient(_credentials, _subscriptionId);
+                    }
+                    else if (result.KeyChar == 'c')
+                    {
+                        Console.Clear();
+                        SetRegion();
+                    }
+                    else if (result.KeyChar == 'd')
+                    {
+                        Console.Clear();
+                        await SetResourceGroupAsync();
+                    }
+                    else if (result.KeyChar == 'e')
+                    {
+                        Console.Clear();
+                        await Account(_cosmosClient, _resourceGroupName, _location);
+                    }
+                    else if (result.KeyChar == 'f')
+                    {
+                        Console.Clear();
+                        await Cassandra(_cosmosClient, _resourceGroupName, _location);
+                    }
+                    else if (result.KeyChar == 'g')
+                    {
+                        Console.Clear();
+                        await Gremlin(_cosmosClient, _resourceGroupName, _location);
+                    }
+                    else if (result.KeyChar == 'h')
+                    {
+                        Console.Clear();
+                        await MongoDB(_cosmosClient, _resourceGroupName, _location);
+                    }
+                    else if (result.KeyChar == 'i')
+                    {
+                        Console.Clear();
+                        await NoSql(_cosmosClient, _resourceGroupName, _location);
+                    }
+                    else if (result.KeyChar == 'j')
+                    {
+                        Console.Clear();
+                        await Table(_cosmosClient, _resourceGroupName, _location);
+                    }
+                    else if (result.KeyChar == 'x')
+                    {
+                        exit = true;
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -79,11 +129,33 @@ namespace cosmos_management_generated
             }
         }
 
-        static async Task<ServiceClientCredentials> AuthenticateAsync(string clientId, string clientSecret, string tenantId)
+        static void SetRegion()
         {
-            ServiceClientCredentials credentials = await ApplicationTokenProvider.LoginSilentAsync(tenantId, clientId, clientSecret);
+            Console.WriteLine("Enter region to use:");
+            _location = Console.ReadLine();
+        }
 
-            return credentials;
+        static async Task SetResourceGroupAsync()
+        {
+            Console.WriteLine("Enter existing resource group name or leave blank to generate one with a random name");
+            _resourceGroupName = Console.ReadLine();
+
+            if(_resourceGroupName.Length == 0)
+            {
+                _resourceGroupName = await CreateResourceGroupAsync(_credentials, _subscriptionId, _location);
+            }
+        }
+
+        static async Task AuthenticateAsync()
+        {
+            string tenantId = _config.GetSection("tenantId").Value;
+            string appId = _config.GetSection("appId").Value;
+            string password = _config.GetSection("password").Value;
+            _subscriptionId = _config.GetSection("subscriptionId").Value;
+
+            //Authenticate
+            _credentials = await ApplicationTokenProvider.LoginSilentAsync(tenantId, appId, password);
+
         }
 
         static CosmosDBManagementClient CreateCosmosClient(ServiceClientCredentials credentials, string subscriptionId)
@@ -114,7 +186,7 @@ namespace cosmos_management_generated
 
         }
 
-        static string RandomResourceName(string prefix)
+        static string RandomResourceName(string prefix = "")
         {
             string x = Path.GetRandomFileName();
             x = prefix + x.Replace(".", "");
@@ -123,36 +195,183 @@ namespace cosmos_management_generated
 
         static async Task Account(CosmosDBManagementClient cosmosClient, string resourceGroupName, string location)
         {
-            string accountName = RandomResourceName("sql-");
+            string accountName = "";
+            DatabaseAccount.Api apiType = DatabaseAccount.Api.Sql;
             
             DatabaseAccount account = new DatabaseAccount();
 
-            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Sql);
-            await account.ListAccountsAsync(cosmosClient, resourceGroupName);
-            await account.GetAccountAsync(cosmosClient, resourceGroupName, accountName);
-            await account.ListKeysAsync(cosmosClient, resourceGroupName, accountName);
-            await account.UpdateAccountAsync(cosmosClient, resourceGroupName, accountName);
-            await account.AddRegionAsync(cosmosClient, resourceGroupName, accountName);
-            await account.ChangeFailoverPriority(cosmosClient, resourceGroupName, accountName);
-            await account.InitiateFailover(cosmosClient, resourceGroupName, accountName);
+            bool exit = false;
 
+            while (exit == false)
+            {
+                Console.Clear();
+                Console.WriteLine($"Database Account Management Samples");
+                Console.WriteLine($"-----------------------------------");
+                Console.WriteLine($"[a]   Set Account Name");
+                Console.WriteLine($"[b]   Set database API");
+                Console.WriteLine($"[c]   Create a new Cosmos DB Account");
+                Console.WriteLine($"-----------------------------------");
+                Console.WriteLine($"[d]   List accounts in Resource Group");
+                Console.WriteLine($"[e]   Get a Cosmos DB Account");
+                Console.WriteLine($"[f]   List Account Keys");
+                Console.WriteLine($"[g]   Update a Cosmos DB Account");
+                Console.WriteLine($"[h]   Add a Region");
+                Console.WriteLine($"[i]   Change Failover Priority");
+                Console.WriteLine($"[j]   Initiate a Failover");
+                Console.WriteLine($"[x]   Return to Main Menu");
+
+                ConsoleKeyInfo result = Console.ReadKey(true);
+
+                if (result.KeyChar == 'a')
+                {
+                    Console.Clear();
+                    Console.WriteLine("Enter Cosmos DB Account Name. Leave blank to generate a random name");
+                    
+                    accountName = Console.ReadLine();
+
+                    if (accountName.Length == 0)
+                    {
+                        accountName = RandomResourceName();
+                    }
+                }
+                else if (result.KeyChar == 'b')
+                {
+                    Console.Clear();
+                    Console.WriteLine("Enter Database API. (sql,gremlin,cassandra,mongodb,table)");
+                    string api = Console.ReadLine();
+
+                    switch (api)
+                    {
+                        case "sql":
+                            apiType = DatabaseAccount.Api.Sql;
+                            break;
+                        case "gremlin":
+                            apiType = DatabaseAccount.Api.Gremlin;
+                            break;
+                        case "cassandra":
+                            apiType = DatabaseAccount.Api.Cassandra;
+                            break;
+                        case "mongodb":
+                            apiType = DatabaseAccount.Api.MongoDB;
+                            break;
+                        case "table":
+                            apiType = DatabaseAccount.Api.Table;
+                            break;
+                    }
+
+                }
+                else if (result.KeyChar == 'c')
+                {
+                    Console.Clear();
+                    await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, apiType);
+                }
+                else if (result.KeyChar == 'd')
+                {
+                    Console.Clear();
+                    List<string> accounts = await account.ListAccountsAsync(cosmosClient, resourceGroupName);
+
+                    foreach(string acct in accounts)
+                    {
+                        Console.WriteLine($"Account Name: {acct}");
+                    }
+
+                    Console.WriteLine("Press any key to continue.");
+                    Console.ReadKey();
+                }
+                else if (result.KeyChar == 'e')
+                {
+                    Console.Clear();
+
+                    string acct = await SelectAccount(account, resourceGroupName);
+
+                    Console.Clear();
+
+                    await account.GetAccountAsync(cosmosClient, resourceGroupName, acct);
+
+                }
+                else if (result.KeyChar == 'f')
+                {
+                    Console.Clear();
+
+                    accountName = await SelectAccount(account, resourceGroupName);
+
+                    await account.ListKeysAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'g')
+                {
+                    Console.Clear();
+
+                    accountName = await SelectAccount(account, resourceGroupName);
+
+                    await account.UpdateAccountAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'h')
+                {
+                    Console.Clear();
+
+                    accountName = await SelectAccount(account, resourceGroupName);
+
+                    //Add some code in here to get the current regions and prompt to add one.
+
+                    await account.AddRegionAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'i')
+                {
+                    Console.Clear();
+
+                    accountName = await SelectAccount(account, resourceGroupName);
+
+                    //Add some code in here to get the current regions and prompt to change priority.
+
+                    await account.ChangeFailoverPriority(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'j')
+                {
+                    Console.Clear();
+
+                    accountName = await SelectAccount(account, resourceGroupName);
+
+                    //Add some code in here to get the current regions and prompt to failover region 0.
+
+                    await account.InitiateFailover(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'x')
+                {
+                    exit = true;
+                }
+            }
         }
 
-        static async Task Sql(CosmosDBManagementClient cosmosClient, string resourceGroupName, string location)
+        static async Task<string> SelectAccount(DatabaseAccount account, string resourceGroupName)
+        {
+            Console.Clear();
+
+            List<string> accounts = await account.ListAccountsAsync(_cosmosClient, resourceGroupName);
+
+            int i = 0;
+            Console.WriteLine($"Enter number for Cosmos account, press Enter");
+            foreach (string acct in accounts)
+            {
+                Console.WriteLine($"{i}\tAccount Name: {acct}");
+                i++;
+            }
+            int s = Convert.ToInt32(Console.ReadLine());
+
+            return accounts[s];
+        }
+
+        static async Task NoSql(CosmosDBManagementClient cosmosClient, string resourceGroupName, string location)
         {
             string accountName = RandomResourceName("sql-");
-            string database1Name = "database1";
-            string database2Name = "database2";
-            string database3Name = "database3";
+            string databaseName = "database1";
             string container1Name = "container1";
             string container2Name = "container2";
-            string partitionKey = "/myPartitionKey";
+            List<string> partitionKey = new List<string> { "/myPartitionKey" };
+            List<string> hierarchicalPk = new List<string> { "/tenantId", "/departmentId", "/employeeId" };
             int throughput = 400;
             int newThroughput = 500;
-            int autoscaleMaxThroughput = 4000;
-            int newAutoscaleMaxThroughput = 5000;
+            int autoscaleMaxThroughput = 1000;
             int updatedTtl = (60 * 60 * 24); // 1 day TTL
-
 
             string storedProcedureName = "storedProcedure1";
             string triggerName = "preTriggerAll1";
@@ -163,82 +382,206 @@ namespace cosmos_management_generated
             string triggerBody = File.ReadAllText($@".\js\{triggerName}.js");
             string userDefinedFunctionBody = File.ReadAllText($@".\js\{userDefinedFunctionName}.js");
 
-            //Create a new account
-            DatabaseAccount account = new DatabaseAccount();
-            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Sql);
+            NoSql sql = new NoSql();
 
-            Sql sql = new Sql();
+            bool exit = false;
+            while (exit == false)
+            {
+                Console.Clear();
+                Console.WriteLine($"SQL API Management Samples");
+                Console.WriteLine($"-----------------------------------");
+                Console.WriteLine($"[a]   Create SQL API Account");
+                Console.WriteLine($"[b]   Create Database");
+                Console.WriteLine($"[c]   List all Databases in Account");
+                Console.WriteLine($"[d]   Get Database in Account");
+                Console.WriteLine($"[e]   Create Container 1 PK standard throughput");
+                Console.WriteLine($"[f]   Create Container hierarchical PK, autoscale throughput ");
+                Console.WriteLine($"[g]   List all Containers in Database");
+                Console.WriteLine($"[h]   Get Container in Database");
+                Console.WriteLine($"[i]   Update container standard throughput");
+                Console.WriteLine($"[j]   Migrate container throughput from standard to autoscale");
+                Console.WriteLine($"[k]   Update Container");
+                Console.WriteLine($"[l]   Create Stored Procedure");
+                Console.WriteLine($"[m]   Create Trigger");
+                Console.WriteLine($"[n]   Create User Defined Function");
+                Console.WriteLine($"[x]   Return to Main Menu");
 
-            //Database (shared throughput)
-            await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database1Name, throughput); //standard throughput
-            await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name, autoscaleMaxThroughput, autoScale: true); //autoscale throughput
-            await sql.ListDatabasesAsync(cosmosClient, resourceGroupName, accountName);
-            await sql.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, database1Name);
-            await sql.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, newThroughput); //update standard throughput
-            await sql.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, newAutoscaleMaxThroughput, autoScale: true); //update autoscale throughput
-            await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: true); //migrate manual to autoscale
-            await sql.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: false); //migrate autoscale to manual
+                ConsoleKeyInfo result = Console.ReadKey(true);
 
-            //Container (dedicated throughput)
-            await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database3Name);
-            await sql.CreateContainerAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, partitionKey, throughput); //manual throughput
-            await sql.CreateContainerAsync(cosmosClient, resourceGroupName, accountName, database3Name, container2Name, partitionKey, autoscaleMaxThroughput, autoScale: true); //autoscale throughput
-            await sql.ListContainersAsync(cosmosClient, resourceGroupName, accountName, database3Name);
-            await sql.GetContainerAsync(cosmosClient, resourceGroupName, accountName, database3Name, container2Name);
-            await sql.UpdateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, newThroughput); //update standard throughput
-            await sql.UpdateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container2Name, newAutoscaleMaxThroughput, autoScale: true); //update autoscale throughput
-            await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, autoScale: true); //migrate manual to autoscale
-            await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, autoScale: false); //migrate autoscale to manual
-            await sql.UpdateContainerAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, defaultTtl: updatedTtl);
-
-            //Server-Side
-            await sql.CreateStoredProcedureAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, storedProcedureName, storedProcedureBody);
-            await sql.CreateTriggerAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, triggerName, triggerOperation, triggerType, triggerBody);
-            await sql.CreateUserDefinedFunctionAsync(cosmosClient, resourceGroupName, accountName, database3Name, container1Name, userDefinedFunctionName, userDefinedFunctionBody);
+                if (result.KeyChar == 'a')
+                {
+                    Console.Clear();
+                    //Create a new account
+                    DatabaseAccount account = new DatabaseAccount();
+                    await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Sql);
+                }
+                else if (result.KeyChar == 'b')
+                {
+                    Console.Clear();
+                    //Create a database
+                    await sql.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName);
+                }
+                else if (result.KeyChar == 'c')
+                {
+                    Console.Clear();
+                    await sql.ListDatabasesAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'd')
+                {
+                    Console.Clear();
+                    await sql.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName);
+                }
+                else if (result.KeyChar == 'e')
+                {
+                    Console.Clear();
+                    //manual throughput, one partition key
+                    await sql.CreateContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, container1Name, partitionKey, throughput);
+                }
+                else if (result.KeyChar == 'f')
+                {
+                    Console.Clear();
+                    //autoscale throughput, hierarchical partition key
+                    await sql.CreateContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, container2Name, hierarchicalPk, autoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'g')
+                {
+                    Console.Clear();
+                    await sql.ListContainersAsync(cosmosClient, resourceGroupName, accountName, databaseName);
+                }
+                else if (result.KeyChar == 'h')
+                {
+                    Console.Clear();
+                    await sql.GetContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, container2Name);
+                }
+                else if (result.KeyChar == 'i')
+                {
+                    Console.Clear();
+                    //update standard throughput
+                    await sql.UpdateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, container1Name, newThroughput);
+                }
+                else if (result.KeyChar == 'j')
+                {
+                    Console.Clear();
+                    //migrate manual to autoscale
+                    await sql.MigrateContainerThroughputAsync(cosmosClient, resourceGroupName, accountName, databaseName, container1Name, autoScale: true);
+                }
+                else if (result.KeyChar == 'k')
+                {
+                    Console.Clear();
+                    //update container ttl
+                    await sql.UpdateContainerAsync(cosmosClient, resourceGroupName, accountName, databaseName, container1Name, defaultTtl: updatedTtl);
+                }
+                else if (result.KeyChar == 'l')
+                {
+                    Console.Clear();
+                    await sql.CreateStoredProcedureAsync(cosmosClient, resourceGroupName, accountName, databaseName, container1Name, storedProcedureName, storedProcedureBody);
+                }
+                else if (result.KeyChar == 'm')
+                {
+                    Console.Clear();
+                    await sql.CreateTriggerAsync(cosmosClient, resourceGroupName, accountName, databaseName, container1Name, triggerName, triggerOperation, triggerType, triggerBody);
+                }
+                else if (result.KeyChar == 'n')
+                {
+                    Console.Clear();
+                    await sql.CreateUserDefinedFunctionAsync(cosmosClient, resourceGroupName, accountName, databaseName, container1Name, userDefinedFunctionName, userDefinedFunctionBody);
+                }
+                else if (result.KeyChar == 'x')
+                {
+                    exit = true;
+                }
+            }
         }
-
+        
         static async Task Gremlin(CosmosDBManagementClient cosmosClient, string resourceGroupName, string location)
         {
             string accountName = RandomResourceName("gremlin-");
-            string database1Name = "database1";
-            string database2Name = "database2";
-            string database3Name = "database3";
+            string databaseName = "database1";
             string graph1Name = "graph1";
             string graph2Name = "graph2";
+            List<string> partitionKey = new List<string> { "/myPartitionKey" };
             int throughput = 400;
             int newThroughput = 500;
-            int autoscaleMaxThroughput = 4000;
-            int newAutoscaleMaxThroughput = 5000;
+            int autoscaleMaxThroughput = 1000;
             int updatedTtl = (60 * 60 * 24); // 1 day TTL
-
-            //Create a new account
-            DatabaseAccount account = new DatabaseAccount();
-            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Gremlin);
 
             Gremlin gremlin = new Gremlin();
 
-            //Database (shared throughput)
-            await gremlin.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database1Name, throughput); //standard throughput
-            await gremlin.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name, autoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await gremlin.ListDatabasesAsync(cosmosClient, resourceGroupName, accountName);
-            await gremlin.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name);
-            await gremlin.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, newThroughput);//standard throughput
-            await gremlin.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await gremlin.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: true); //migrate standard to autoscale
-            await gremlin.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: false); //migrate autoscale to standard
+            bool exit = false;
+            while (exit == false)
+            {
+                Console.Clear();
+                Console.WriteLine($"Gremlin API Management Samples");
+                Console.WriteLine($"-----------------------------------");
+                Console.WriteLine($"[a]   Create Gremlin API Account");
+                Console.WriteLine($"[b]   Create Database");
+                Console.WriteLine($"[c]   List all Databases in Account");
+                Console.WriteLine($"[d]   Get Database in Account");
+                Console.WriteLine($"[e]   Create Graph with standard throughput");
+                Console.WriteLine($"[f]   Create Graph with autoscale throughput ");
+                Console.WriteLine($"[g]   List all Graphs in Database");
+                Console.WriteLine($"[h]   Get Graph in Database");
+                Console.WriteLine($"[i]   Update Graph");
+                Console.WriteLine($"[x]   Return to Main Menu");
 
-            //Graph (dedicated throughput)
-            await gremlin.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database3Name);//dedicated database
-            await gremlin.CreateGraphAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, throughput); //standard throughput
-            await gremlin.CreateGraphAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph2Name, autoscaleMaxThroughput, autoScale: true); //autoscale throughput
-            await gremlin.ListGraphsAsync(cosmosClient, resourceGroupName, accountName, database3Name);
-            await gremlin.GetGraphAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph2Name);
-            await gremlin.UpdateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, newThroughput);//standard throughput
-            await gremlin.UpdateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await gremlin.MigrateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, autoScale: true); //migrate standard to autoscale
-            await gremlin.MigrateGraphThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, autoScale: false); //migrate autoscale to standard
-            await gremlin.UpdateGraphAsync(cosmosClient, resourceGroupName, accountName, database3Name, graph1Name, defaultTtl: updatedTtl);
+                ConsoleKeyInfo result = Console.ReadKey(true);
 
+                if (result.KeyChar == 'a')
+                {
+                    Console.Clear();
+                    //Create a new account
+                    DatabaseAccount account = new DatabaseAccount();
+                    await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Gremlin);
+                }
+                else if (result.KeyChar == 'b')
+                {
+                    Console.Clear();
+                    //Create a database
+                    await gremlin.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName);
+                }
+                else if (result.KeyChar == 'c')
+                {
+                    Console.Clear();
+                    await gremlin.ListDatabasesAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'd')
+                {
+                    Console.Clear();
+                    await gremlin.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, databaseName);
+                }
+                else if (result.KeyChar == 'e')
+                {
+                    Console.Clear();
+                    //standard throughput
+                    await gremlin.CreateGraphAsync(cosmosClient, resourceGroupName, accountName, databaseName, graph1Name, partitionKey, throughput);
+                }
+                else if (result.KeyChar == 'f')
+                {
+                    Console.Clear();
+                    //autoscale throughput
+                    await gremlin.CreateGraphAsync(cosmosClient, resourceGroupName, accountName, databaseName, graph2Name, partitionKey, autoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'g')
+                {
+                    Console.Clear();
+                    await gremlin.ListGraphsAsync(cosmosClient, resourceGroupName, accountName, databaseName);
+                }
+                else if (result.KeyChar == 'h')
+                {
+                    Console.Clear();
+                    await gremlin.GetGraphAsync(cosmosClient, resourceGroupName, accountName, databaseName, graph2Name);
+                }
+                else if (result.KeyChar == 'i')
+                {
+                    Console.Clear();
+                    //update graph ttl
+                    await gremlin.UpdateGraphAsync(cosmosClient, resourceGroupName, accountName, databaseName, graph1Name, defaultTtl: updatedTtl);
+                }
+                else if (result.KeyChar == 'x')
+                {
+                    exit = true;
+                }
+            }
         }
 
         static async Task MongoDB(CosmosDBManagementClient cosmosClient, string resourceGroupName, string location)
@@ -246,115 +589,288 @@ namespace cosmos_management_generated
             string accountName = RandomResourceName("mongodb-");
             string database1Name = "database1";
             string database2Name = "database2";
-            string database3Name = "database3";
             string collection1Name = "collection1";
             string collection2Name = "collection2";
-            int throughput = 400;
-            int newThroughput = 500;
-            int autoscaleMaxThroughput = 4000;
-            int newAutoscaleMaxThroughput = 5000;
-
-            //Create a new account
-            DatabaseAccount account = new DatabaseAccount();
-            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.MongoDB);
+            int autoscaleMaxThroughput = 1000;
+            int newAutoscaleMaxThroughput = 2000;
 
             MongoDB mongoDB = new MongoDB();
 
-            //Database (shared throughput)
-            await mongoDB.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database1Name, throughput);//standard throughput
-            await mongoDB.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name, autoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await mongoDB.ListDatabasesAsync(cosmosClient, resourceGroupName, accountName);
-            await mongoDB.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name);
-            await mongoDB.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, newThroughput);//standard throughput
-            await mongoDB.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await mongoDB.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: true); //migrate standard to autoscale
-            await mongoDB.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: false); //migrate autoscale to standard
+            bool exit = false;
+            while (exit == false)
+            {
+                Console.Clear();
+                Console.WriteLine($"MongoDB API Management Samples");
+                Console.WriteLine($"-----------------------------------");
+                Console.WriteLine($"[a]   Create MongoDB API Account");
+                Console.WriteLine($"[b]   Create Database with shared autoscale throughput");
+                Console.WriteLine($"[c]   Create Database with no throughput");
+                Console.WriteLine($"[d]   List all Databases in Account");
+                Console.WriteLine($"[e]   Get Database in Account");
+                Console.WriteLine($"[f]   Update Database with autoscale throughput");
+                Console.WriteLine($"[g]   Migrate shared throughput Database from autoscale to standard throughput");
+                Console.WriteLine($"[h]   Create Collection in database using shared throughput");
+                Console.WriteLine($"[i]   Create Collection with dedicated autoscale throughput");
+                Console.WriteLine($"[j]   List all Collections in Database");
+                Console.WriteLine($"[k]   Get Collection in Database");
+                Console.WriteLine($"[j]   Update Collection with autoscale throughput");
+                Console.WriteLine($"[k]   Migrate Collection from autoscale to standard throughput");
+                Console.WriteLine($"[l]   Update Collection");
+                Console.WriteLine($"[x]   Return to Main Menu");
 
-            //Collection (dedicated throughput)
-            await mongoDB.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database3Name);//dedicated collection throughput
-            await mongoDB.CreateCollectionAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name, throughput);//standard throughput
-            await mongoDB.CreateCollectionAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection2Name, autoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await mongoDB.ListCollectionsAsync(cosmosClient, resourceGroupName, accountName, database3Name);
-            await mongoDB.GetCollectionAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection2Name);
-            await mongoDB.UpdateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name, newThroughput);//standard throughput
-            await mongoDB.UpdateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await mongoDB.MigrateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name, autoScale: true); //migrate standard to autoscale
-            await mongoDB.MigrateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name, autoScale: false); //migrate autoscale to standard
-            await mongoDB.UpdateCollectionAsync(cosmosClient, resourceGroupName, accountName, database3Name, collection1Name);
+                ConsoleKeyInfo result = Console.ReadKey(true);
 
+                if (result.KeyChar == 'a')
+                {
+                    Console.Clear();
+                    //Create a new account
+                    DatabaseAccount account = new DatabaseAccount();
+                    await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.MongoDB);
+                }
+                else if (result.KeyChar == 'b')
+                {
+                    Console.Clear();
+                    //Create a database with shared autoscale throughput
+                    await mongoDB.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'c')
+                {
+                    Console.Clear();
+                    //database with no throughput
+                    await mongoDB.CreateDatabaseAsync(cosmosClient, resourceGroupName, accountName, database2Name);
+                }
+                else if (result.KeyChar == 'd')
+                {
+                    Console.Clear();
+                    await mongoDB.ListDatabasesAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'e')
+                {
+                    Console.Clear();
+                    await mongoDB.GetDatabaseAsync(cosmosClient, resourceGroupName, accountName, database1Name);
+                }
+                else if (result.KeyChar == 'f')
+                {
+                    Console.Clear();
+                    //Update database autoscale throughput
+                    await mongoDB.UpdateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, newAutoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'g')
+                {
+                    Console.Clear();
+                    //migrate shared throughput database from autoscale to standard throughput 
+                    await mongoDB.MigrateDatabaseThroughputAsync(cosmosClient, resourceGroupName, accountName, database1Name, autoScale: false);
+                }
+                else if (result.KeyChar == 'h')
+                {
+                    Console.Clear();
+                    //collection to use throughput from database
+                    await mongoDB.CreateCollectionAsync(cosmosClient, resourceGroupName, accountName, database1Name, collection1Name);
+                }
+                else if (result.KeyChar == 'i')
+                {
+                    Console.Clear();
+                    //collection with dedicated autoscale throughput
+                    await mongoDB.CreateCollectionAsync(cosmosClient, resourceGroupName, accountName, database2Name, collection2Name, autoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'j')
+                {
+                    Console.Clear();
+                    await mongoDB.ListCollectionsAsync(cosmosClient, resourceGroupName, accountName, database2Name);
+                }
+                else if (result.KeyChar == 'k')
+                {
+                    Console.Clear();
+                    await mongoDB.GetCollectionAsync(cosmosClient, resourceGroupName, accountName, database2Name, collection2Name);
+                }
+                else if (result.KeyChar == 'l')
+                {
+                    Console.Clear();
+                    //Update autoscale collection with additional throughput
+                    await mongoDB.UpdateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, collection2Name, newAutoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'm')
+                {
+                    Console.Clear();
+                    //migrate autoscale to standard
+                    await mongoDB.MigrateCollectionThroughputAsync(cosmosClient, resourceGroupName, accountName, database2Name, collection2Name, autoScale: false);
+                }
+                else if (result.KeyChar == 'n')
+                {
+                    Console.Clear();
+                    await mongoDB.UpdateCollectionAsync(cosmosClient, resourceGroupName, accountName, database2Name, collection2Name);
+                }
+                else if (result.KeyChar == 'x')
+                {
+                    exit = true;
+                }
+            }
         }
 
         static async Task Cassandra(CosmosDBManagementClient cosmosClient, string resourceGroupName, string location)
         {
             string accountName = RandomResourceName("cassandra-");
-            string keyspace1Name = "keyspace1";
-            string keyspace2Name = "keyspace2";
-            string keyspace3Name = "keyspace3";
+            string keyspaceName = "keyspace1";
             string table1Name = "table1";
             string table2Name = "table2";
             int throughput = 400;
-            int newThroughput = 500;
-            int autoscaleMaxThroughput = 4000;
-            int newAutoscaleMaxThroughput = 5000;
+            int autoscaleMaxThroughput = 1000;
+            int newAutoscaleMaxThroughput = 2000;
             int updatedTtl = (60 * 60 * 24); // 1 day TTL
-
-            //Create a new account
-            DatabaseAccount account = new DatabaseAccount();
-            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Cassandra);
 
             Cassandra cassandra = new Cassandra();
 
-            //Keyspace (shared throughput)
-            await cassandra.CreateKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspace1Name, throughput);//standard throughput
-            await cassandra.CreateKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspace2Name, autoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await cassandra.ListKeyspacesAsync(cosmosClient, resourceGroupName, accountName);
-            await cassandra.GetKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspace2Name);
-            await cassandra.UpdateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace1Name, newThroughput);//standard throughput
-            await cassandra.UpdateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await cassandra.MigrateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace1Name, autoScale: true); //migrate standard to autoscale
-            await cassandra.MigrateKeyspaceThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace1Name, autoScale: false); //migrate autoscale to standard
+            bool exit = false;
+            while (exit == false)
+            {
+                Console.Clear();
+                Console.WriteLine($"Cassandra API Management Samples");
+                Console.WriteLine($"-----------------------------------");
+                Console.WriteLine($"[a]   Create Cassandra API Account");
+                Console.WriteLine($"[b]   Create Keyspace");
+                Console.WriteLine($"[c]   List all Keyspaces in Account");
+                Console.WriteLine($"[d]   Get Keyspace in Account");
+                Console.WriteLine($"[e]   Create Table with autoscale throughput ");
+                Console.WriteLine($"[f]   List all Tables in Keyspace");
+                Console.WriteLine($"[g]   Get Table in Keyspace");
+                Console.WriteLine($"[h]   Update Table with autoscale throughput");
+                Console.WriteLine($"[i]   Migrate Table throughput from standard to autoscale");
+                Console.WriteLine($"[j]   Update Table");
+                Console.WriteLine($"[x]   Return to Main Menu");
 
-            //Table (dedicated throughput)
-            await cassandra.CreateKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name);//dedicated keyspace
-            await cassandra.CreateTableAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, throughput);//standard throughput
-            await cassandra.CreateTableAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table2Name, autoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await cassandra.ListTablesAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name);
-            await cassandra.GetTableAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table2Name);
-            await cassandra.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, newThroughput);//standard throughput
-            await cassandra.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table2Name, newAutoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await cassandra.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, autoScale: true); //migrate standard to autoscale
-            await cassandra.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, autoScale: false); //migrate autoscale to standard
-            await cassandra.UpdateTableAsync(cosmosClient, resourceGroupName, accountName, keyspace3Name, table1Name, defaultTtl: updatedTtl);
+                ConsoleKeyInfo result = Console.ReadKey(true);
 
+                if (result.KeyChar == 'a')
+                {
+                    Console.Clear();
+                    //Create a new account
+                    DatabaseAccount account = new DatabaseAccount();
+                    await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Cassandra);
+                }
+                else if (result.KeyChar == 'b')
+                {
+                    Console.Clear();
+                    //Create a keyspace
+                    await cassandra.CreateKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspaceName);
+                }
+                else if (result.KeyChar == 'c')
+                {
+                    Console.Clear();
+                    await cassandra.ListKeyspacesAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'd')
+                {
+                    Console.Clear();
+                    await cassandra.GetKeyspaceAsync(cosmosClient, resourceGroupName, accountName, keyspaceName);
+                }
+                else if (result.KeyChar == 'e')
+                {
+                    Console.Clear();
+                    //autoscale throughput
+                    await cassandra.CreateTableAsync(cosmosClient, resourceGroupName, accountName, keyspaceName, table2Name, autoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'f')
+                {
+                    Console.Clear();
+                    await cassandra.ListTablesAsync(cosmosClient, resourceGroupName, accountName, keyspaceName);
+                }
+                else if (result.KeyChar == 'g')
+                {
+                    Console.Clear();
+                    await cassandra.GetTableAsync(cosmosClient, resourceGroupName, accountName, keyspaceName, table2Name);
+                }
+                else if (result.KeyChar == 'h')
+                {
+                    Console.Clear();
+                    //Update table with autoscale throughput
+                    await cassandra.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspaceName, table2Name, newAutoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'i')
+                {
+                    Console.Clear();
+                    //migrate standard to autoscale
+                    await cassandra.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, keyspaceName, table1Name, autoScale: true);
+                }
+                else if (result.KeyChar == 'j')
+                {
+                    Console.Clear();
+                    //update table ttl
+                    await cassandra.UpdateTableAsync(cosmosClient, resourceGroupName, accountName, keyspaceName, table1Name, defaultTtl: updatedTtl);
+                }
+                else if (result.KeyChar == 'x')
+                {
+                    exit = true;
+                }
+            }
         }
 
         static async Task Table(CosmosDBManagementClient cosmosClient, string resourceGroupName, string location)
         {
             string accountName = RandomResourceName("table-");
-            string table1Name = "table1";
             string table2Name = "table2";
-            int throughput = 400;
-            int newThroughput = 500;
-            int autoscaleMaxThroughput = 4000;
-            int newAutoscaleMaxThroughput = 5000;
-
-            //Create a new account
-            DatabaseAccount account = new DatabaseAccount();
-            await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Table);
+            int autoscaleMaxThroughput = 1000;
+            int newAutoscaleMaxThroughput = 2000;
 
             Table table = new Table();
 
-            //Table
-            await table.CreateTableAsync(cosmosClient, resourceGroupName, accountName, table1Name, throughput);//standard throughput
-            await table.CreateTableAsync(cosmosClient, resourceGroupName, accountName, table2Name, autoscaleMaxThroughput, autoScale: true);//autoscale throughput
-            await table.ListTablesAsync(cosmosClient, resourceGroupName, accountName);
-            await table.GetTableAsync(cosmosClient, resourceGroupName, accountName, table2Name);
-            await table.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table1Name, newThroughput);//standard throughput
-            await table.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table2Name, newAutoscaleMaxThroughput, autoScale: true);//standard throughput
-            await table.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table1Name, autoScale: true); //migrate standard to autoscale
-            await table.MigrateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table1Name, autoScale: false); //migrate autoscale to standard
-            await table.UpdateTableAsync(cosmosClient, resourceGroupName, accountName, table1Name);
+            bool exit = false;
+            while (exit == false)
+            {
+                Console.Clear();
+                Console.WriteLine($"Table API Management Samples");
+                Console.WriteLine($"-----------------------------------");
+                Console.WriteLine($"[a]   Create Table API Account");
+                Console.WriteLine($"[b]   Create Table with autoscale throughput ");
+                Console.WriteLine($"[c]   List all Tables in Account");
+                Console.WriteLine($"[d]   Get Table in Account");
+                Console.WriteLine($"[e]   Update Table's autoscale throughput");
+                Console.WriteLine($"[x]   Return to Main Menu");
 
+                ConsoleKeyInfo result = Console.ReadKey(true);
+
+                if (result.KeyChar == 'a')
+                {
+                    Console.Clear();
+                    //Create a new account
+                    DatabaseAccount account = new DatabaseAccount();
+                    await account.CreateAccountAsync(cosmosClient, resourceGroupName, location, accountName, DatabaseAccount.Api.Table);
+                }
+                else if (result.KeyChar == 'b')
+                {
+                    Console.Clear();
+                    //create table with autoscale throughput
+                    await table.CreateTableAsync(cosmosClient, resourceGroupName, accountName, table2Name, autoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'c')
+                {
+                    Console.Clear();
+                    await table.ListTablesAsync(cosmosClient, resourceGroupName, accountName);
+                }
+                else if (result.KeyChar == 'd')
+                {
+                    Console.Clear();
+                    await table.GetTableAsync(cosmosClient, resourceGroupName, accountName, table2Name);
+                }
+                else if (result.KeyChar == 'e')
+                {
+                    Console.Clear();
+                    //update amount of table's autoscale throughput
+                    await table.UpdateTableThroughputAsync(cosmosClient, resourceGroupName, accountName, table2Name, newAutoscaleMaxThroughput, autoScale: true);
+                }
+                else if (result.KeyChar == 'x')
+                {
+                    exit = true;
+                }
+            }
         }
+    }
+
+    class Secrets
+    {
+        public string ClientId { get; set; }
+        public string TenantId { get; set; }
+        public string ClientSecret { get; set; }
+        public string SubscriptionId { get; set; }
+
     }
 }

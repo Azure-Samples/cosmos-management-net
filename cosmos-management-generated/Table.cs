@@ -9,7 +9,6 @@ namespace cosmos_management_generated
 {
     class Table
     {
-#pragma warning disable CS8632
         public async Task<TableGetResults> CreateTableAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
@@ -23,10 +22,14 @@ namespace cosmos_management_generated
                 Resource = new TableResource
                 {
                     Id = tableName
-                },
-                //Account-level shared throughput is not supported via Control Plane
-                Options = Throughput.Create(throughput, autoScale)
+                }
             };
+
+            if (throughput != null)
+            {
+                //Account-level shared throughput is not supported via Control Plane. Can only do table throughput
+                tableCreateUpdateParameters.Options = Throughput.Create(Convert.ToInt32(throughput), Convert.ToBoolean(autoScale));
+            }
 
             return await cosmosClient.TableResources.CreateUpdateTableAsync(resourceGroupName, accountName, tableName, tableCreateUpdateParameters);
         }
@@ -76,7 +79,7 @@ namespace cosmos_management_generated
             string accountName, 
             string tableName,
             int throughput,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
 
             try
@@ -95,62 +98,6 @@ namespace cosmos_management_generated
                 Console.ReadKey();
                 return 0;
             }
-        }
-
-        public async Task MigrateTableThroughputAsync(
-             CosmosDBManagementClient cosmosClient,
-             string resourceGroupName,
-             string accountName,
-             string tableName,
-             bool? autoScale = false)
-        {
-            try
-            {
-                if (autoScale.Value)
-                {
-                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.MigrateTableToAutoscaleAsync(resourceGroupName, accountName, tableName);
-                    Throughput.Print(throughputSettingsGetResults.Resource);
-                }
-                else
-                {
-                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.TableResources.MigrateTableToManualThroughputAsync(resourceGroupName, accountName, tableName);
-                    Throughput.Print(throughputSettingsGetResults.Resource);
-                }
-            }
-            catch
-            {
-                Console.WriteLine("Table throughput not set\nPress any key to continue");
-                Console.ReadKey();
-            }
-
-        }
-        
-        public async Task<TableGetResults> UpdateTableAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string tableName, 
-            Dictionary<string, string>? tags = null)
-        {
-            //Get the table and clone it's properties before updating (no PATCH support for child resources)
-            TableGetResults tableGet = await cosmosClient.TableResources.GetTableAsync(resourceGroupName, accountName, tableName);
-
-            TableCreateUpdateParameters tableCreateUpdateParameters = new TableCreateUpdateParameters
-            {
-                Resource = new TableResource
-                {
-                    Id = tableName,
-                },
-                Options = new CreateUpdateOptions(),
-                Tags = tableGet.Tags 
-            };
-
-            //The only thing mutable in Table is Tags
-            if (tags != null)
-                tableCreateUpdateParameters.Tags = tags;
-
-            return await cosmosClient.TableResources.CreateUpdateTableAsync(
-                resourceGroupName, accountName, tableName, tableCreateUpdateParameters);
         }
     }
 }
