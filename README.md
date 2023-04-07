@@ -11,10 +11,7 @@ urlFragment: "cosmos-management-net"
 # Azure Management Libraries for .NET for Azure Cosmos DB
 
 The Azure Management Libraries for .NET for Azure Cosmos DB is a object-oriented API for managing Azure Cosmos DB resources via it's Resource Provider.
-There are two projects and two versions of this API. A project of samples built on our auto-generated libraries built against the Swagger spec on the REST API
-for the Cosmos DB Resource Provider, and another fluent-style API that is built upon the auto-generated libary. 
-
-Please note that the fluent interfaces are not fully complete and both the generated and fluent libraries are Preview releases.
+The library is auto-generated against the Swagger spec for the Cosmos DB Resource Provider. 
 
 ## Contents
 
@@ -22,7 +19,6 @@ Outline the file contents of the repository. It helps users navigate the codebas
 
 | File/folder                  | Description                                |
 |------------------------------|--------------------------------------------|
-| `cosmos-management-fluent`   | Cosmos DB fluent management samples.       |
 | `cosmos-management-generated`| Cosmos DB generated management samples.    |
 
 
@@ -32,13 +28,33 @@ None
 
 ## Setup
 
-To get started you will need to generate a service principal in Azure. Add the required information needed in appSettings.json or authenticate using MSI with the 
+To get started you will need to generate a service principal in Azure. Add the required information needed in appSettings.json, or authenticate using MSI with the 
 proper RBAC on the Cosmos resources to manage and modify the authentication in the samples.
+
+To generate the service principal with the correct permissions, use this sample azure cli script below. You can define the scope for this service principal at the subscription or resource group level.
+
+```
+let "randomIdentifier=$RANDOM*$RANDOM"  
+servicePrincipalName="cosmos-mgt-sp-$randomIdentifier"
+roleName="Contributor"
+subscriptionID=$(az account show --query id -o tsv)
+# Verify the ID of the active subscription if not use `az account set -s [subscriptionId}]`
+echo "Using subscription ID $subscriptionID"
+resourceGroup="myResourceGroup"
+
+echo "Creating SP for RBAC with name $servicePrincipalName, with role $roleName and in scopes /subscriptions/$subscriptionID/resourceGroups/$resourceGroup"
+
+az ad sp create-for-rbac --name $servicePrincipalName --role $roleName --scopes /subscriptions/$subscriptionID/resourceGroups/$resourceGroup
+```
+
+Save the output in a secure location.
+
 
 ## Running the sample
 
-Set the start up project, ensure you have your service principal credentials in appSettings.json. 
-To learn more see, [Authentication in Azure Management Libraries for .NET](https://github.com/Azure/azure-libraries-for-net/blob/master/AUTH.md)
+Set the start up project, ensure you have your service principal credentials as outlined above. 
+To learn more see, [Authentication in Azure Management Libraries for .NET](https://github.com/Azure/azure-libraries-for-net/blob/master/AUTH.md). Please note these instructions
+are out of date. Example above is latest guidance.
 
 ## Key concepts
 

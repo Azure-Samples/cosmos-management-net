@@ -8,7 +8,6 @@ namespace cosmos_management_generated
 {
     class Cassandra
     {
-#pragma warning disable CS8632
         public async Task<CassandraKeyspaceGetResults> CreateKeyspaceAsync(
             CosmosDBManagementClient cosmosClient,
             string resourceGroupName,
@@ -23,9 +22,11 @@ namespace cosmos_management_generated
                 Resource = new CassandraKeyspaceResource
                 {
                     Id = keyspaceName
-                },
-                Options = Throughput.Create(throughput, autoScale)
+                }
             };
+
+            if (throughput != null)
+                cassandraKeyspaceCreateUpdateParameters.Options = Throughput.Create(Convert.ToInt32(throughput), Convert.ToBoolean(autoScale));
 
             return await cosmosClient.CassandraResources.CreateUpdateCassandraKeyspaceAsync(resourceGroupName, accountName, keyspaceName, cassandraKeyspaceCreateUpdateParameters);
         }
@@ -71,68 +72,13 @@ namespace cosmos_management_generated
             return cassandraKeyspace;
         }
 
-        public async Task<int> UpdateKeyspaceThroughputAsync(
-            CosmosDBManagementClient cosmosClient,
-            string resourceGroupName,
-            string accountName,
-            string keyspaceName,
-            int throughput,
-            bool? autoScale = false)
-        {
-
-            try
-            {
-                ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.GetCassandraKeyspaceThroughputAsync(resourceGroupName, accountName, keyspaceName);
-
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
-
-                await cosmosClient.CassandraResources.UpdateCassandraKeyspaceThroughputAsync(resourceGroupName, accountName, keyspaceName, throughputUpdate);
-
-                return throughput;
-
-            }
-            catch
-            {
-                Console.WriteLine("Keyspace throughput not set\nPress any key to continue");
-                Console.ReadKey();
-                return 0;
-            }
-        }
-
-        public async Task MigrateKeyspaceThroughputAsync(
-            CosmosDBManagementClient cosmosClient,
-            string resourceGroupName,
-            string accountName,
-            string keyspaceName,
-            bool? autoScale = false)
-        {
-            try
-            {
-                if (autoScale.Value)
-                {
-                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.MigrateCassandraKeyspaceToAutoscaleAsync(resourceGroupName, accountName, keyspaceName);
-                    Throughput.Print(throughputSettingsGetResults.Resource);
-                }
-                else
-                {
-                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.MigrateCassandraKeyspaceToManualThroughputAsync(resourceGroupName, accountName, keyspaceName);
-                    Throughput.Print(throughputSettingsGetResults.Resource);
-                }
-            }
-            catch
-            {
-                Console.WriteLine("Keyspace throughput not set\nPress any key to continue");
-                Console.ReadKey();
-            }
-        }
-
         public async Task<CassandraTableGetResults> CreateTableAsync(
             CosmosDBManagementClient cosmosClient,
             string resourceGroupName,
             string accountName,
             string keyspaceName,
             string tableName,
-            int? throughput = null,
+            int? throughput,
             bool? autoScale = false)
         {
 
@@ -161,9 +107,14 @@ namespace cosmos_management_generated
                             new ClusterKey { Name = "posted_month", OrderBy = "asc" }
                         }
                     }
-                },
-                Options = Throughput.Create(throughput, autoScale)
+                }
             };
+
+            if (throughput != null)
+            {
+                //Create table with dedicated throughput
+                cassandraTableCreateUpdateParameters.Options = Throughput.Create(Convert.ToInt32(throughput), Convert.ToBoolean(autoScale));
+            }
 
             return await cosmosClient.CassandraResources.CreateUpdateCassandraTableAsync(resourceGroupName, accountName, keyspaceName, tableName, cassandraTableCreateUpdateParameters);
         }
@@ -244,7 +195,7 @@ namespace cosmos_management_generated
             string keyspaceName,
             string tableName,
             int throughput,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
 
             try
@@ -271,11 +222,11 @@ namespace cosmos_management_generated
             string accountName,
             string keyspaceName,
             string tableName,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
             try
             {
-                if (autoScale.Value)
+                if (autoScale)
                 {
                     ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.CassandraResources.MigrateCassandraTableToAutoscaleAsync(resourceGroupName, accountName, keyspaceName, tableName);
                     Throughput.Print(throughputSettingsGetResults.Resource);

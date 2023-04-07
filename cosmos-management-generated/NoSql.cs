@@ -6,8 +6,7 @@ using Microsoft.Azure.Management.CosmosDB.Models;
 
 namespace cosmos_management_generated
 {
-#pragma warning disable CS8632
-    public class Sql
+    public class NoSql
     {
         public async Task<SqlDatabaseGetResults> CreateDatabaseAsync(
             CosmosDBManagementClient cosmosClient, 
@@ -17,16 +16,19 @@ namespace cosmos_management_generated
             int? throughput = null,
             bool? autoScale = false)
         {
-
             SqlDatabaseCreateUpdateParameters sqlDatabaseCreateUpdateParameters = new SqlDatabaseCreateUpdateParameters
             {
                 Resource = new SqlDatabaseResource
                 {
                     Id = databaseName
-                },
-                //If throughput is null, return empty options, for dedicated container throughput
-                Options = Throughput.Create(throughput, autoScale)
+                }
             };
+
+            if(throughput != null)
+            {
+                //Create database with shared throughput
+                sqlDatabaseCreateUpdateParameters.Options = Throughput.Create(Convert.ToInt32(throughput), Convert.ToBoolean(autoScale));
+            }
 
             return await cosmosClient.SqlResources.CreateUpdateSqlDatabaseAsync(resourceGroupName, accountName, databaseName, sqlDatabaseCreateUpdateParameters);
         }
@@ -70,63 +72,13 @@ namespace cosmos_management_generated
             return sqlDatabase;
         }
 
-        public async Task UpdateDatabaseThroughputAsync(
-            CosmosDBManagementClient cosmosClient, 
-            string resourceGroupName, 
-            string accountName, 
-            string databaseName, 
-            int throughput, 
-            bool? autoScale = false)
-        {
-            try
-            {
-                ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.GetSqlDatabaseThroughputAsync(resourceGroupName, accountName, databaseName);
-
-                ThroughputSettingsUpdateParameters throughputUpdate = Throughput.Update(throughputSettingsGetResults.Resource, throughput, autoScale);
-
-                await cosmosClient.SqlResources.UpdateSqlDatabaseThroughputAsync(resourceGroupName, accountName, databaseName, throughputUpdate);
-            }
-            catch 
-            {
-                Console.WriteLine("Database throughput not set\nPress any key to continue");
-                Console.ReadKey();
-            }
-        }
-
-        public async Task MigrateDatabaseThroughputAsync(
-            CosmosDBManagementClient cosmosClient,
-            string resourceGroupName,
-            string accountName,
-            string databaseName,
-            bool? autoScale = false)
-        {
-            try
-            {
-                if(autoScale.Value)
-                {
-                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.MigrateSqlDatabaseToAutoscaleAsync(resourceGroupName, accountName, databaseName);
-                    Throughput.Print(throughputSettingsGetResults.Resource);
-                }
-                else
-                {
-                    ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.MigrateSqlDatabaseToManualThroughputAsync(resourceGroupName, accountName, databaseName);
-                    Throughput.Print(throughputSettingsGetResults.Resource);
-                }
-            }
-            catch
-            {
-                Console.WriteLine("Database throughput not set\nPress any key to continue");
-                Console.ReadKey();
-            }
-        }
-
         public async Task<SqlContainerGetResults> CreateContainerAsync(
             CosmosDBManagementClient cosmosClient, 
             string resourceGroupName, 
             string accountName, 
             string databaseName, 
             string containerName, 
-            string partitionKey,
+            List<string> partitionKey,
             int? throughput = null,
             bool? autoScale = false)
         {
@@ -140,8 +92,8 @@ namespace cosmos_management_generated
                     PartitionKey = new ContainerPartitionKey
                     {
                         Kind = "Hash",
-                        Paths = new List<string> { partitionKey },
-                        Version = 1 //version 2 for large partition key
+                        Paths = partitionKey,
+                        Version = 2 //version = 1 is legacy pk with 100 byte hash on pk values. Use version 2 for 1 MB hash and hierarichal partition key support.
                     },
                     IndexingPolicy = new IndexingPolicy
                     {
@@ -153,7 +105,9 @@ namespace cosmos_management_generated
                         },
                         ExcludedPaths = new List<ExcludedPath>
                         {
-                            new ExcludedPath { Path = "/myPathToNotIndex/*"}
+                            new ExcludedPath { Path = "/myPathToNotIndex/*"},
+                            new ExcludedPath { Path = "/myPropertyToNotIndex/?"},
+                            new ExcludedPath { Path = "/_etag/?"}
                         },
                         SpatialIndexes = new List<SpatialSpec>
                         {
@@ -194,11 +148,14 @@ namespace cosmos_management_generated
                         Mode = ConflictResolutionMode.LastWriterWins,
                         ConflictResolutionPath = "/myConflictResolverPath"
                     }
-                },
-                //If throughput is null, return empty options for shared container throughput
-                //unless database has no throughput, then defaults to 400 RU/s container
-                Options = Throughput.Create(throughput, autoScale)
+                }
             };
+
+            if (throughput != null)
+            {
+                //Create container with dedicated throughput
+                sqlContainerCreateUpdateParameters.Options = Throughput.Create(Convert.ToInt32(throughput), Convert.ToBoolean(autoScale));
+            }
 
             return await cosmosClient.SqlResources.CreateUpdateSqlContainerAsync(resourceGroupName, accountName, databaseName, containerName, sqlContainerCreateUpdateParameters);
         }
@@ -255,17 +212,17 @@ namespace cosmos_management_generated
                 Console.WriteLine("\nPartition Key Properties\n-----------------------");
 
                 Console.WriteLine($"Partition Key Kind: {partitionKey.Kind}"); //Currently only Hash
-                Console.WriteLine($"Partition Key Version: {partitionKey.Version.GetValueOrDefault()}"); //version 2 = large partition key support
+                Console.WriteLine($"Partition Key Version: {partitionKey.Version.GetValueOrDefault()}"); //version 2 = large or hierarchical partition key support
                 foreach (string path in partitionKey.Paths)
                 {
-                    Console.WriteLine($"Partition Key Path: {path}"); //Currently just one Partition Key per container
+                    Console.WriteLine($"Partition Key Path: {path}"); //Either one partition key or multiple for hierarchical partition keys
                 }
             }
 
             IndexingPolicy indexingPolicy = properties.IndexingPolicy;
             Console.WriteLine("\nIndexing Policy\n-----------------------");
             Console.WriteLine($"Indexing Mode: {indexingPolicy.IndexingMode}");
-            Console.WriteLine($"Automatic: {indexingPolicy.Automatic.Value}");
+            Console.WriteLine($"Automatic: {indexingPolicy.Automatic.GetValueOrDefault()}");
 
             if (indexingPolicy.IncludedPaths != null)
             {
@@ -371,7 +328,7 @@ namespace cosmos_management_generated
             string databaseName, 
             string containerName, 
             int throughput,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
 
             try
@@ -395,11 +352,11 @@ namespace cosmos_management_generated
             string accountName,
             string databaseName,
             string containerName,
-            bool? autoScale = false)
+            bool autoScale = false)
         {
             try
             {
-                if (autoScale.Value)
+                if (autoScale)
                 {
                     ThroughputSettingsGetResults throughputSettingsGetResults = await cosmosClient.SqlResources.MigrateSqlContainerToAutoscaleAsync(resourceGroupName, accountName, databaseName, containerName);
                     Throughput.Print(throughputSettingsGetResults.Resource);

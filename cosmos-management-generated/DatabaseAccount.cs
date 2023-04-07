@@ -18,6 +18,12 @@ namespace cosmos_management_generated
 			Table
 		}
 
+		public async Task RegenerateKeyAsync(CosmosDBManagementClient cosmosClient, string resourceGroupName, string accountName)
+        {
+			DatabaseAccountRegenerateKeyParameters keyParameters = new DatabaseAccountRegenerateKeyParameters("primary");
+			await cosmosClient.DatabaseAccounts.RegenerateKeyAsync(resourceGroupName, accountName, keyParameters);
+        }
+
 		public async Task<DatabaseAccountGetResults> CreateAccountAsync(
 			CosmosDBManagementClient cosmosClient, 
 			string resourceGroupName, 
@@ -25,34 +31,41 @@ namespace cosmos_management_generated
 			string accountName, 
 			Api apiType)
 		{
-			
+
 			DatabaseAccountCreateUpdateParameters createUpdateParameters = new DatabaseAccountCreateUpdateParameters
 			{
-				Location = resourceLocation, //region where account will be created
-				Locations = new List<Location>
+				Location = resourceLocation, //region where account metadata for the ARM-tracked databaseAccount resource is created
+				Locations = new List<Location> //regions where data is stored/replicated
 				{
-					new Location { LocationName = "West US 2", FailoverPriority = 0, IsZoneRedundant = false },
-					new Location { LocationName = "East US 2", FailoverPriority = 1, IsZoneRedundant = false }
+					new Location { LocationName = "West US", FailoverPriority = 0, IsZoneRedundant = false },
+					new Location { LocationName = "East US", FailoverPriority = 1, IsZoneRedundant = false }
 				},
-				ConsistencyPolicy = new ConsistencyPolicy
-				{ 
-					DefaultConsistencyLevel = DefaultConsistencyLevel.Session 
-				},
-				EnableAutomaticFailover = true,
+				ConsistencyPolicy = new ConsistencyPolicy { DefaultConsistencyLevel = DefaultConsistencyLevel.Session },
+				EnableAutomaticFailover = true, //also referred to as system-managed failover
 				DisableKeyBasedMetadataWriteAccess = false,  //setting this to true blocks SDK clients from changing any control plane resources
-				EnableAnalyticalStorage = false,
-				PublicNetworkAccess = "enabled",
 				EnableFreeTier = false,
 				EnableMultipleWriteLocations = false,
-				KeyVaultKeyUri = string.Empty,
-				IpRules = new List<IpAddressOrRange>() { },
-				VirtualNetworkRules = new List<VirtualNetworkRule>() { },
-				Cors = new List<CorsPolicy>() { },
-				IsVirtualNetworkFilterEnabled = false,
+				//EnableAnalyticalStorage = false,
+				//AnalyticalStorageConfiguration = new AnalyticalStorageConfiguration { SchemaType = "WellDefined" }, //Can be WellDefined or FullFidelity
+				//KeyVaultKeyUri = string.Empty, //KeyVault URI for customer-managed encryption keys
+				//DefaultIdentity = "SystemAssignIdentity", //Identity used to access keys in KeyVault
+				//IpRules = new List<IpAddressOrRange>() { },
+				//IsVirtualNetworkFilterEnabled = false,
+				//VirtualNetworkRules = new List<VirtualNetworkRule>() { },
+				//NetworkAclBypass = NetworkAclBypass.AzureServices,
+				//NetworkAclBypassResourceIds = new List<string>() { },
+				//PublicNetworkAccess = "enabled",
+				//Cors = new List<CorsPolicy>() { },
+				//DisableLocalAuth = false, //when set to true, SDK's can only use MSI or AAD to authenticate rather than master keys
+				CreateMode = "Default", //Default is regular account creation, or Restore from backup
 				Tags = new Dictionary<string, string>() { }
+				
 			};
 
-			SetApi(createUpdateParameters, apiType);
+            //Serverless Mode (Any resource provisions with throughput will throw an exception)
+            //createUpdateParameters.Capabilities.Add(new Capability { Name = "EnableServerless" });
+
+            SetApi(createUpdateParameters, apiType);
 
 			return await cosmosClient.DatabaseAccounts.CreateOrUpdateAsync(resourceGroupName, accountName, createUpdateParameters);
 		}
@@ -81,31 +94,31 @@ namespace cosmos_management_generated
 			DatabaseAccountGetResults databaseAccount = await cosmosClient.DatabaseAccounts.GetAsync(resourceGroupName, accountName);
 
 			Console.WriteLine($"Resource Id: {databaseAccount.Id}");
-			Console.WriteLine($"Name: {databaseAccount.Name}");
-			Console.WriteLine($"Free Tier: {databaseAccount.EnableFreeTier.GetValueOrDefault()}");
-			Console.WriteLine($"Api: {GetApi(databaseAccount)}");
 			
-			foreach(string capability in GetCapabilities(databaseAccount))
+			Console.WriteLine($"Name: {databaseAccount.Name}");
+            
+			Console.WriteLine($"Api: {GetApi(databaseAccount)}");
+            
+			Console.WriteLine($"Default Consistency Level: {databaseAccount.ConsistencyPolicy.DefaultConsistencyLevel}");
+            
+			Console.WriteLine($"Connection Endpoint: {databaseAccount.DocumentEndpoint}");
+
+            foreach (string capability in GetCapabilities(databaseAccount))
 			{
 				Console.WriteLine($"Capability: {capability}");
 			}
 
-			if(databaseAccount.ApiProperties.ServerVersion.Length > 0)
-			{
+			if(databaseAccount.Kind == "MongoDB" )
 				Console.WriteLine($"Server Version: {databaseAccount.ApiProperties.ServerVersion}");
-			}
 			
-			Console.WriteLine($"Default Consistency Level: {databaseAccount.ConsistencyPolicy.DefaultConsistencyLevel}");
-			Console.WriteLine($"Connection Endpoint: {databaseAccount.DocumentEndpoint}");
-
-			bool isMultiMaster = false;
-			if (databaseAccount.EnableMultipleWriteLocations.GetValueOrDefault())
-			{
-				isMultiMaster = true;
-				Console.WriteLine("Multi-Master Enabled: true");
-			}
-
-			Console.WriteLine("\nList Region Replicas for Cosmos Account\n------------------------------------");
+            bool isMultiMaster = false;
+            if (databaseAccount.EnableMultipleWriteLocations.GetValueOrDefault())
+            {
+                isMultiMaster = true;
+                Console.WriteLine("Multi-Region Writes Enabled: true");
+            }
+            Console.WriteLine($"Free Tier: {databaseAccount.EnableFreeTier.GetValueOrDefault()}");
+            Console.WriteLine("\nList Replicated Regions for Cosmos DB Account\n------------------------------------");
 			foreach (Location location in databaseAccount.Locations)
 			{
 				Console.WriteLine($"Location Id: {location.Id}");
@@ -117,12 +130,20 @@ namespace cosmos_management_generated
 				Console.WriteLine("------------------------------------");
 			}
 
-			Console.WriteLine($"Enable Automatic Failover: {databaseAccount.EnableAutomaticFailover.GetValueOrDefault()}");
+            Console.WriteLine($"Enable Analytical Storage: {databaseAccount.EnableAnalyticalStorage.GetValueOrDefault().ToString()}");
+			
+			Console.WriteLine($"Backup Policy: {databaseAccount.BackupPolicy.ToString()}");
 
-			Console.WriteLine($"Control Plane locked to RBAC only: {databaseAccount.DisableKeyBasedMetadataWriteAccess.GetValueOrDefault()}");
+            Console.WriteLine($"Enable System-Managed Failover: {databaseAccount.EnableAutomaticFailover.GetValueOrDefault()}");
 
-			if (databaseAccount.KeyVaultKeyUri.Length > 0)
-				Console.WriteLine($"KeyVault Uri: {databaseAccount.KeyVaultKeyUri}");
+			Console.WriteLine($"Disable DataPlane SDK access to Control Plane: {databaseAccount.DisableKeyBasedMetadataWriteAccess.GetValueOrDefault()}");
+
+            Console.WriteLine($"Default Identity: {databaseAccount.DefaultIdentity}");
+
+            if (databaseAccount.KeyVaultKeyUri == null)
+                Console.WriteLine($"Encryption using Service-Managed Key");
+            else
+				Console.WriteLine($"Encryption using Cusotmer-Managed Key. KeyVault Uri: {databaseAccount.KeyVaultKeyUri}");
 
 			if (databaseAccount.IpRules.Count > 0)
 			{
@@ -142,7 +163,7 @@ namespace cosmos_management_generated
 				}
 			}
 
-			if(databaseAccount.PrivateEndpointConnections.Count > 0)
+			if(databaseAccount.PrivateEndpointConnections != null)
 			{
 				Console.WriteLine("\nPrivate Endpoint Connections\n------------------------------------");
 				foreach(PrivateEndpointConnection privateEndpoint in databaseAccount.PrivateEndpointConnections)
@@ -153,7 +174,15 @@ namespace cosmos_management_generated
 					Console.WriteLine($"\tActions Required: {privateEndpoint.PrivateLinkServiceConnectionState.ActionsRequired}");
 				}
 			}
-			
+
+			if(databaseAccount.Tags.Count > 0)
+            {
+				Console.WriteLine("\nTags\n------------------------------------");
+				foreach(var tag in databaseAccount.Tags)
+                {
+					Console.WriteLine($"Tag Key: {tag.Key} \tTag Value:{tag.Value}");
+				}
+			}
 
 			return databaseAccount;
 		}
@@ -171,6 +200,9 @@ namespace cosmos_management_generated
 			Console.WriteLine($"Secondary Key: {keys.SecondaryMasterKey}");
 			Console.WriteLine($"Secondary Readonly Key: {keys.SecondaryReadonlyMasterKey}");
 
+			Console.WriteLine("Press any key to continue.");
+			Console.ReadKey();
+
 			return keys;
 		}
 
@@ -182,8 +214,9 @@ namespace cosmos_management_generated
 			//DatabaseAccount supports patch operations so simply pass in the value for the updated properties and call update.
 			//Note that you cannot update Locations and other properties simultaneously. Doing so will throw an exception.
 
-			//Change the default consistency policy for the account to eventual
-			DatabaseAccountUpdateParameters databaseAccountUpdateParameters = new DatabaseAccountUpdateParameters
+			Console.WriteLine("Change the default consistency policy for the account to eventual");
+
+            DatabaseAccountUpdateParameters databaseAccountUpdateParameters = new DatabaseAccountUpdateParameters
 			{
 				ConsistencyPolicy = new ConsistencyPolicy
 				{
@@ -270,26 +303,36 @@ namespace cosmos_management_generated
 
 		private void SetApi(DatabaseAccountCreateUpdateParameters createUpdateParameters, Api apiType)
 		{
-			switch (apiType)
+
+            //Add to any previously added capabilities
+            IList<Capability> capabilities = createUpdateParameters.Capabilities;
+			
+			//If null then create a new array
+			if(capabilities == null)
+				capabilities = new List<Capability>();
+
+            switch (apiType)
 			{
 				case Api.Sql:
 					createUpdateParameters.Kind = "GlobalDocumentDB";
 					break;
 				case Api.MongoDB:
 					createUpdateParameters.Kind = "MongoDB";
-					ApiProperties apiProperties = new ApiProperties { ServerVersion = "4.0" };
-					createUpdateParameters.ApiProperties = apiProperties;
+					createUpdateParameters.ApiProperties = new ApiProperties { ServerVersion = "4.2" }; //Values: 3.2, 3.6, 4.0, 4.2
+					capabilities.Add(new Capability { Name = "DisableRateLimitingResponses" }); //Enable server-side retries
 					break;
 				case Api.Cassandra:
-					createUpdateParameters.Capabilities = new List<Capability> { new Capability { Name = "EnableCassandra" } };
+                    capabilities.Add( new Capability { Name = "EnableCassandra" });
 					break;
 				case Api.Gremlin:
-					createUpdateParameters.Capabilities = new List<Capability> { new Capability { Name = "EnableGremlin" } };
+					capabilities.Add( new Capability { Name = "EnableGremlin" });
 					break;
 				case Api.Table:
-					createUpdateParameters.Capabilities = new List<Capability> { new Capability { Name = "EnableTable" } };
+					capabilities.Add( new Capability { Name = "EnableTable" });
 					break;
 			}
+
+			createUpdateParameters.Capabilities = capabilities;
 		}
 		private string GetApi(DatabaseAccountGetResults cosmosAccount)
 		{
@@ -324,7 +367,7 @@ namespace cosmos_management_generated
 		}
 		private List<string> GetCapabilities(DatabaseAccountGetResults cosmosAccount)
 		{
-			//return any non API capabilities for account
+			//return any non API capabilities for account, GetApi() returns those.
 			List<string> capabilities = new List<string>();
 			if (cosmosAccount.Capabilities.Count > 0)
 			{
